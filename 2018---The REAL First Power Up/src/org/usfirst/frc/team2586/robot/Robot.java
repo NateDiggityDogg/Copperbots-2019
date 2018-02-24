@@ -16,485 +16,465 @@ import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.Solenoid;
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.DoubleSolenoid.Value;
-import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.interfaces.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.GenericHID;
 
-public class Robot extends IterativeRobot {
+public class Robot extends TimedRobot {
 
-	// VARIABLE DECLARATIONS
-	final String moveAuto = "line";
-	final String switchAuto = "switch";
-	String autoSelected;
+	/*
+	 * HARDWARE DECLARATIONS
+	 */
 
-	String gear = "";
-	boolean retracted = true;
-	boolean clamped;
-	Compressor comp;
-	DoubleSolenoid shifter;
-	DoubleSolenoid clamp;
-	DoubleSolenoid retract;
-	
+	// Controllers
+	XboxController driverController, operatorController;
 
-	PID driveLeftPID, driveRightPID, liftPID;
-	
-
-	// enums for both auto functions
-	enum switchFunc {
-		forward, turn1, forward2, turn2, forward3, dump, unused
-	}
-
-	enum moveFunc {
-		forward, stop, unused
-	}
-
-	// Naming Talons
+	// Speed Controllers
 	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, lift;
 	WPI_VictorSPX intakeLeft, intakeRight;
-	
-	//Limit Switches
-	//DigitalInput topLimit, botLimit;
 
-	// Naming Joysticks
-	Joystick leftStick, rightStick, driverController,operatorController;
-
-	// Naming mainDrive
-	DifferentialDrive mainDrive;
-
-	// Creating one of both enums
-	switchFunc autoSwitch;
-	moveFunc autoMove;
-
-	// The game data received from the game
-	String gameData;
-
-	// direction boolean for deciding switch control direction
-	boolean left;
-	boolean gyroMode = false;
-	double gyroHeading = 0;
-
-	String presetSwitch = "Left";
-
-	// Motor ports
-	// Drive Train
-	final int FL = 3;
-	final int RL = 4;
-	final int FR = 1;
-	final int RR = 2;
-	// Lift, Intake L&R, Shifters
-	
-	final int L = 5; 
-	final int IL = 0; 
-	final int IR = 0;
-	 
-	// Joystick values
-	double lX;
-	double lY;
-
-	double rX;
-	double rY;
-	
-	double lT;
-	double rT;
-	// driverController joystick values
-	double driverControllerlY;
-	double driverControllerrY;
-
-	double operLeftStick;
-	
-	double f1, t1, f2, t2, f3;
-
-	double autoSpeed;
-
-	private CameraServer camera;
-
-	// gyro
+	// Gyro
 	ADIS16448_IMU gyro;
 
-	// encoders
+	// Encoders
 	Encoder leftEnc;
 	Encoder rightEnc;
 	Encoder liftEnc;
 
-	// Sendable chooser for autonomous
+	// Pneumatics
+	Compressor comp;
+	DoubleSolenoid shifter;
+	DoubleSolenoid clamp;
+	DoubleSolenoid intakeDeploy;
+
+	// Switches
+	DigitalInput liftLow, liftHigh, liftMid;
+
+	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
-	SendableChooser autoRate = new SendableChooser<>();
+	final String autoChooserNone = "None";
+	final String autoChooserLine = "line";
+	final String autoChooserSwitchCenter = "Center Switch";
+	final String autoChooserSwitchLeft   = "Left Switch";
+	final String autoChooserSwitchRight  = "Right Switch";
+
+	/*
+	 * VARIABLE DECLARATIONS
+	 */
+
+	// Naming mainDrive
+	DifferentialDrive mainDrive;
+	
+	// Disable soft-limits and let the operator do as they please
+	boolean limitBreak = false;
+	
+	/*
+	 * AUTON STATE VARS
+	 */
+	
+	// The game data received from the game
+	String gameData;
+	
+	// Current step in the Auton Program
+	int autoStep = 0;
+
+	// Auton State Timer
+	Timer autoTimer;
+
+	// autoDrive state vars
+	private double dPrev = 0.0;
+	
+
 
 	/**
 	 * -------------------------------------------------------------------------------------------------------------------------------
 	 * ROBOT INITIALIZATION
 	 */
+	@Override
 	public void robotInit() {
 
-		//Pneumatics
+		// Pneumatics
 		comp = new Compressor();
 		comp.start();
 
 		shifter = new DoubleSolenoid(0, 1);
 		clamp = new DoubleSolenoid(2, 3);
-		retract = new DoubleSolenoid(4,5);
+		intakeDeploy = new DoubleSolenoid(4, 5);
 
 		// Controllers
-		driverController = new Joystick(0);
-		operatorController = new Joystick(1);
+		driverController = new XboxController(0);
+		operatorController = new XboxController(1);
 
-		leftStick = new Joystick(0);
-		rightStick = new Joystick(1);
-		
-		//Encoders
+		// Encoders
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
-		liftEnc = new Encoder(4, 5);
 
-		//Gyro
+		leftEnc.setDistancePerPulse(10.0 / 10.0); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(10.0 / 10.0); // [Inches/Pulses]
+
+		// Gyro
 		gyro = new ADIS16448_IMU();
 		gyro.calibrate();
 
-		//Drivebase
-		frontRight = new WPI_TalonSRX(FR);
-		frontLeft = new WPI_TalonSRX(FL);
-		rearLeft = new WPI_TalonSRX(RL);
-		rearRight = new WPI_TalonSRX(RR);
+		// Drivebase
+		frontRight = new WPI_TalonSRX(1);
+		frontLeft = new WPI_TalonSRX(3);
+		rearLeft = new WPI_TalonSRX(4);
+		rearRight = new WPI_TalonSRX(2);
 
 		// declaring slave/master for back wheels
-		rearLeft.set(ControlMode.Follower, FL);
-		rearRight.set(ControlMode.Follower, FR);
+		rearLeft.set(ControlMode.Follower, 3);
+		rearRight.set(ControlMode.Follower, 1);
 
-		//Lift System
+		// Lift
 		lift = new WPI_TalonSRX(6);
-		intakeLeft = new WPI_VictorSPX(IL);
-		intakeRight = new WPI_VictorSPX(IR);
-		
-//		topLimit = new DigitalInput(0);
-//		botLimit = new DigitalInput(0);
+		liftLow = new DigitalInput(7);
+		liftMid = new DigitalInput(8);
+		liftHigh = new DigitalInput(9);
 
+		// Intake
+		intakeLeft = new WPI_VictorSPX(5);
+		intakeRight = new WPI_VictorSPX(6);
 
 		// declaring the drive system
 		mainDrive = new DifferentialDrive(frontLeft, frontRight);
-		mainDrive.setSafetyEnabled(true);
-
-		//Set PIDs
-		/*
-		driveLeftPID = new PID(0.002586, 0, 0);
-		driveRightPID = new PID(0.002586, 0, 0);
-		*/
-		driveLeftPID = new PID(0.00005, 0, 0);
-		driveRightPID = new PID(0.00005, 0, 0);
+		mainDrive.setSafetyEnabled(false);
 		
-		liftPID = new PID(0.002586, 0, 0);
-
-		// setting default and adding choices for autoChooser and adding it to smartDash
-		autoChooser.addDefault("Cross the line", moveAuto);
-		autoChooser.addObject("Switch Auto", switchAuto);
 		
+		// Auto Program Chooser [Smart Dash]
+		autoChooser.addDefault(autoChooserLine, autoChooserLine);
+		autoChooser.addObject(autoChooserNone, autoChooserNone);
+		autoChooser.addObject(autoChooserSwitchCenter, autoChooserSwitchCenter);
+		autoChooser.addObject(autoChooserSwitchLeft, autoChooserSwitchLeft);
+		autoChooser.addObject(autoChooserSwitchRight, autoChooserSwitchRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
-		
-//		autoSpeed = SmartDashboard.getNumber("Auto Speed", 0.2);
-		
-		SmartDashboard.putNumber("speed", autoSpeed);
-		
-		//Live Stream Camera
-		// CameraServer camera = CameraServer.getInstance();
-		// camera.addServer("Front Cam");
-		// camera.startAutomaticCapture();
-	}
-
-	/**
-	 * ------------------------------------------------------------------------------------------------------------------------------
-	 * BEGINNING OF AUTONOMOUS PHASE
-	 */
-	public void autonomousInit() {
-
-		autoConstantSet();
-		leftEnc.reset();
-		rightEnc.reset();
-		// get the setup of the gameboard and decide on selected auto program
-		gameData = DriverStation.getInstance().getGameSpecificMessage();
-		
-		autoSelected = (String) autoChooser.getSelected();
-		// Setting switch variable to first movement
-		switch (autoSelected) {
-		case moveAuto:
-			autoMove = moveFunc.forward;
-			//Robot throws an error without this random unused enum being declared, I'm assuming its because its trying to switch an undeclared variable?
-			autoSwitch = switchFunc.unused;
-			break;
-		case switchAuto:
-			autoSwitch = switchFunc.forward;
-			autoMove = moveFunc.unused;
-			break;
-
-		}
+	
 	}
 
 	// AUTONOMOUS PERIOD
-	public void autonomousPeriodic() {
-		SmartDashboard.putNumber("Left Encoder Distance", leftEnc.getDistance());
-		SmartDashboard.putNumber("Right Encoder Distance", rightEnc.getDistance());
-		gyroHeading = gyro.getAngle();
-		// Switch case for AUTONOMOUS SWITCH
-		switch (autoSwitch) {
-			case forward:
-				// forwards(autoSpeed);
-				if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= f1) {
-					autoSwitch = switchFunc.turn1;
-					reset();
-	
-				}
-	
-				// once the robot has moved forwards enough
-				break;
-			case turn1:
-				if (left) {
-					// turnLeft(autoSpeed);
-				} else {
-					// turnRight(autoSpeed);
-				}
-				// once the robot has turned enough
-				if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= t1) {
-					autoSwitch = switchFunc.forward2;
-					reset();
-				}
-				break;
-	
-			case forward2:
-			//	forwards(autoSpeed);
-				// once the robot has moved forwards enough
-				if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= f2) {
-					autoSwitch = switchFunc.turn2;
-					leftEnc.reset();
-					rightEnc.reset();
-				}
-	
-				break;
-			case turn2:
-				if (left) {
-					// turnRight(autoSpeed);
-				} else {
-					// turnLeft(autoSpeed);
-				}
-				// once the robot has turned right enough
-				if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= t2) {
-					autoSwitch = switchFunc.forward3;
-					leftEnc.reset();
-					rightEnc.reset();
-				}
-				break;
-			case forward3:
-				// forwards(autoSpeed);
-				// once robot has moved forwards enough
-				if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= f3) {
-					autoSwitch = switchFunc.dump;
-					leftEnc.reset();
-					rightEnc.reset();
-				}
-	
-				break;
-			case dump:
-				// forwards(0);
-				break;
-			case unused:
-				break;
-		}
-
-		// Switch case for AUTONOMOUS MOVE
-		switch (autoMove) {
-		case forward:
-		
-			frontLeft.set(driveLeftPID.getOutput(Math.abs(leftEnc.getDistance()), Constants.autoDriveLeftTar));
-			frontRight.set(-driveRightPID.getOutput(Math.abs(rightEnc.getDistance()), Constants.autoDriveRightTar));
-			
-			smartDash();
-			
-			if ((Math.abs(leftEnc.getDistance()) + Math.abs(rightEnc.getDistance())) / 2 >= 3000) {
-				autoMove = moveFunc.stop;
-			}
-			break;
-
-		case stop:
-			frontLeft.set(0);
-			frontRight.set(0);
-			reset();
-			break;
-
-		case unused:
-			break;
-		}
-
+	@Override
+	public void robotPeriodic() {
+		smartDash();
 	}
 
 	/**
 	 * -------------------------------------------------------------------------------------------------------------------------
-	 * BEGINNING OF TELEOP PHASE
+	 * TELEOP CONTROL
 	 */
 	@Override
 	public void teleopInit() {
-		//reset encoders
+		// Deploy intake
+		intakeDeploy.set(DoubleSolenoid.Value.kForward);
+	}
+
+	/**
+	 * This is the teleop phase, essentially an infinite "while" loop thats run
+	 * during teleop phase, it calls on the two controller classes
+	 */
+
+	@Override
+	public void teleopPeriodic() {
+
+		// Get joystick inputs for drive base
+		double driveLinear = -driverController.getY(GenericHID.Hand.kLeft);
+		double driveRotate = driverController.getX(GenericHID.Hand.kRight);
+
+		mainDrive.arcadeDrive(driveLinear, driveRotate);
+
+		// Shifter Control
+		if (driverController.getRawButton(5)) { // shift low
+			shifter.set(DoubleSolenoid.Value.kForward);
+		}
+		if (driverController.getRawButton(6)) { // shift high
+			shifter.set(DoubleSolenoid.Value.kReverse);
+		}
+
+		// Lift Control
+		double liftCommand = operatorController.getY(GenericHID.Hand.kLeft);
+
+		// Send speed command to the lift
+		liftControl(liftCommand);
+		
+		// Command override level 9...
+		if (limitBreak) lift.set(liftCommand);
+
+		
+		// Intake Control 
+		// Each trigger should allow you to either intake or eject
+		double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft) - operatorController.getTriggerAxis(GenericHID.Hand.kRight);
+		intakeLeft.set(intakeCommand);
+		intakeRight.set(intakeCommand);
+
+		
+		// Claw Control
+		if (operatorController.getAButton()) {
+			clamp.set(DoubleSolenoid.Value.kReverse); // Open
+		}
+		if (operatorController.getBButton()) {
+			clamp.set(DoubleSolenoid.Value.kForward); // Close
+		}
+		if (operatorController.getXButton()) {
+			clamp.set(DoubleSolenoid.Value.kOff);     // float
+		}
+		
+		// Intake Deploy / Retract
+		if (operatorController.getPOV() == 270) {
+			intakeDeploy.set(DoubleSolenoid.Value.kForward); // Deploy
+		}
+		if (operatorController.getPOV() == 90) {
+			intakeDeploy.set(DoubleSolenoid.Value.kReverse); // Retract
+		}
+		
+		
+		// Override all soft limits
+		if (operatorController.getBackButton()) 
+			limitBreak = true;
+		
+		if (operatorController.getStartButton()) 
+			limitBreak = false;
+	}
+
+	// limit switch protection used by both teleop and auton
+	private void liftControl(double input) {
+		
+		// Limit switches to prevent limits
+		if (!liftHigh.get() & input > 0.0)
+			lift.set(input);
+
+		else if (!liftLow.get() & input < 0.0)
+			lift.set(input);
+
+		else
+			lift.set(0.0);	
+	}
+	
+	
+	/**
+	 * ------------------------------------------------------------------------------------------------------------------------------
+	 * BEGINNING OF AUTONOMOUS PHASE
+	 */
+	@Override
+	public void autonomousInit() {
+		// Reset Gyro heading
+		gyro.reset(); 
+		
+		// Restart the auto sequence
+		autoStep = 0;
+		autoNextStep();
+		
+	}
+
+	// AUTONOMOUS PERIOD
+	@Override
+	public void autonomousPeriodic() {
+
+		// Run the selected Auton Program
+		switch (autoChooser.getSelected()) {
+		case autoChooserLine:
+			autoProgLine();
+			break;
+			
+		case autoChooserSwitchCenter:
+			autoProgSwitchCenter();
+			break;
+
+		}
+		
+	}
+
+	/* Cross the Line
+	 * 
+	 * The only reason to run this is if the encoders or gyro are known to be not working...
+	 */
+	private void autoProgLine() {
+		
+		// Switch case for AUTONOMOUS SWITCH
+		switch (autoStep) {
+		case 1:
+			// Drive forward
+			mainDrive.arcadeDrive(0.35, 0.0);
+			
+			// Drive for a bit
+			if (autoTimer.get() < 5.0) autoNextStep();
+			break;
+		
+		case 2:
+			// Stop!
+			mainDrive.arcadeDrive(0.0, 0.0);
+			
+			// Hammer time... :)
+			break;
+		}
+	}
+
+	/* Center Switch
+	 * 
+	 * Start in center of wall, adjacent up with Exchange Zone.
+	 * 
+	 * Robot will drive forward slightly
+	 * Turn 90 Deg toward the correct switch (based FMS data)
+	 * Drive forward to the switch platform
+	 * turn 90 to face switch
+	 * Drive forward to switch platform
+	 * Dump our cube
+	 */
+	private void autoProgSwitchCenter() {
+		
+		// Pick a direction based on FMS data
+		double rot = 90;
+		if(gameData.length() > 1)		
+			if(gameData.startsWith("R")) rot = -90;
+		
+		
+		// Switch case for AUTONOMOUS SWITCH
+		switch (autoStep) {
+		case 1:
+			if (autoDrive(24.0, 0.0)) autoNextStep();
+			break;
+
+		case 2:
+			if (autoDrive(0.0, rot)) autoNextStep();
+			break;
+
+		case 3:
+			if (autoDrive(48.0, rot)) autoNextStep();
+			break;
+
+		case 4:
+			if (autoDrive(0.0, 0.0)) autoNextStep();
+			break;
+
+		case 5:
+			if (autoDrive(36.0, 0.0)) autoNextStep();
+			break;
+			
+		case 6:
+			// Drop it like it's hot... 
+			clamp.set(DoubleSolenoid.Value.kReverse); // Open
+			
+			// Stop!
+			mainDrive.arcadeDrive(0.0, 0.0);
+			
+			break;
+		}
+		
+		
+		// Raise the arm up to the mid-position switch
+		if (!liftMid.get())
+			// lift up slowly
+			liftControl(0.3);
+		else 
+			// hold position
+			lift.set(0.0); 
+
+	}
+	
+	/*
+	 * Auto Drive
+	 * 
+	 * Call from auto state machine, when it is finished it will return True
+	 * so that you can go to the next step. 
+	 * 
+	 * This function will use the encoders and gyro to drive along a straight line 
+	 * to a set distance or rotate on the spot to a set heading.
+	 * 
+	 * Must reset encoders and autoTimer between steps.
+	 */	
+	private boolean autoDrive(double distance, double angle) {
+		//
+		// Linear
+		//
+		
+		// Get Encoder values [Inches]
+		double l = leftEnc.getDistance();
+		double r = rightEnc.getDistance();
+		
+		// If an encoder fails, we assume that it stops generating pulses
+		// so use the larger of the two
+		double d = Math.max(l, r);
+		
+		// Proportional control to get started
+		// TODO: add integral term later perhaps
+		double kP = 1.0 / 36.0; // Start to slow down at 36 inches from target
+		double e_lin = (distance-d);
+		double lin = e_lin*kP;
+		
+		// Ramp up to speed to reduce wheel slippage
+		// TODO: We could probably use .getRate() and control the actual acceleration... 
+		double max_ramp_up = 0.075;
+		if (lin > dPrev + max_ramp_up) lin = dPrev + max_ramp_up;
+		dPrev = lin;
+		
+		// Limit max speed while testing...
+		// TODO: Increase / remove after validation.
+		lin = Math.max(lin, 0.4);
+		
+		//
+		// Rotation
+		//
+		double kP_rot = 0.5/45.0; // start slowing down at 45 deg.
+		double a = gyro.getYaw();
+		double e_rot = angle-a;
+		double rot = e_rot*kP_rot;
+		
+		// Max rotation speed
+		rot = Math.max(rot, 0.5);
+		
+		// Nothing left but to do it...
+		mainDrive.arcadeDrive(lin, rot);
+		
+		// Determine if the robot made it to the target
+		// and then wait a bit so that it can correct any overshoot.
+		if(e_lin > 0.5 || e_rot > 2.0) autoTimer.reset();
+		else if (autoTimer.get() > 0.75) return true;
+		
+		// Keep trying...
+		return false;
+	}
+	
+	private void autoNextStep()
+	{
+		// Reset encoders
 		leftEnc.reset();
 		rightEnc.reset();
 		
-		//move intake claw out 
-		retract.set(Value.kForward);
-
-	}
-
-	/**
-	 * This is the teleop phase, essentially an infinite "while" loop thats run during teleop phase,
-	 * it calls on the two controller classes
-	 */
-	
-	@Override
-	public void teleopPeriodic() {
-		driveBase();
-		//lift();
-		//intake();
-		lift.set(-operatorController.getRawAxis(1));
-
-	}
-
-	/**
-	 * Binding the joysticks for the main driver, they're currently on driverController controller b/c of logistics reasons
-	 */
-	
-	public void driveBase() {
-		smartDash();
-		// MAIN DRIVERS CODE
+		// Reset the Auton timer
+		autoTimer.reset();
+		autoTimer.start();
 		
-		// Arcade Drive w/ driverController Controller
-		lY = driverController.getRawAxis(1);
-		rY = driverController.getRawAxis(4);
-		
-		mainDrive.arcadeDrive(-lY, rY);
-
-		// Tank Drive w/ Joysticks
-		// lY = leftStick.getY();
-		// rY = rightStick.getY();
-
-		// mainDrive.tankDrive(lY, rY);
-		
-		if(driverController.getRawButton(5)) { //shift low
-			shifter.set(Value.kForward);
-			gear = "Low";
-		}
-		if(driverController.getRawButton(6)) { //shift high
-			shifter.set(Value.kReverse);
-			gear = "High";
-		}
-	
-	}
-
-	/**
-	 * This is the lift function used in the teleop phase, it binds the operators controller
-	 */
-	
-	public void lift() {
-		lT = driverController.getRawAxis(2);
-		rT = driverController.getRawAxis(3);
-		
-		operLeftStick = operatorController.getRawAxis(1);
-		
-		//manual control of the lift
-		//if(!(topLimit.get() || botLimit.get()))
-			lift.set(operLeftStick);
-//		else {
-//			if(botLimit.get()) {
-//				if(operLeftStick != 0)
-//					lift.set(0);
-//				operatorController.setRumble(RumbleType.kLeftRumble, .5);
-//				operatorController.setRumble(RumbleType.kRightRumble, .5);
-//
-//				//bounce from the bottom (reset the encoder and do a PID to get you off the bottom)
-//				liftEnc.reset();
-//				//PID to like 40 or something 
-//			}
-//			
-//			if(topLimit.get()) {
-//				//if we are at the top, disable going farther up
-//
-//				if(operLeftStick > 0) {
-//					lift.set(0);
-//				}
-//				else {
-//					lift.set(operLeftStick);
-//				}
-//			}
-//		}
-		
-		//lift presets
-		
-		//0 degree on POV = scale preset
-		//90 degree = switch preset
-		//270 degree = ground preset
-
-		
+		// Go to the next step
+		autoStep++;
 	}
 	
-	public void intake() {
-		
-		//if intake button is pressed and held, arms are in out position and wheels are rotating in 
-		//when the limit switch is pressed, stop the wheels and clamp the arms in 
-		//when the outtake button is pressed, run wheels in other direction and put arms back out? will have to see
-		//probably going to need a state machine for this
-		//intake, waiting, outtake
-		
-	}
-
-	// TESTING PERIOD
-	public void testPeriodic() {
-	}
 	
 	/**
 	 * -------------------------------------------------------------------------------------------------------------------------------
 	 * Custom Functions
 	 */
-	
+
 	public void smartDash() {
-		SmartDashboard.putNumber("lY", lY);
-		SmartDashboard.putNumber("rY", rY);
 
-		SmartDashboard.putNumber("Left Encoder Distance", leftEnc.getDistance());
-		SmartDashboard.putNumber("Right Encoder Distance", rightEnc.getDistance());
+		// Encoders
+		SmartDashboard.putNumber("Encoder Left [RAW]", leftEnc.getRaw());
+		SmartDashboard.putNumber("Encoder Right [RAW]", rightEnc.getRaw());
+		
+		SmartDashboard.putNumber("Encoder Left [INCH]", leftEnc.getDistance());
+		SmartDashboard.putNumber("Encoder Right [INCH]", rightEnc.getDistance());
 
-		SmartDashboard.putNumber("Gyro Angle", gyro.getAngleZ());
-		SmartDashboard.putString("Gear", gear);
-		SmartDashboard.putBoolean("Clamped", clamped);
-		SmartDashboard.putBoolean("Retracted", retracted);
+		// Gyro
+		SmartDashboard.putNumber("Gyro Angle", gyro.getYaw());
+
+		// Get Selected Auton Program
+		SmartDashboard.putString("Auto Program", autoChooser.getSelected());
+		
+		// Get Field data from FMS
+		gameData = DriverStation.getInstance().getGameSpecificMessage().toUpperCase();
 	}
 
-	public void autoConstantSet() {
-		// if(gameData.charAt(0) == 'L')
-		if (presetSwitch.charAt(0) == 'L') {
-			// Put left auto code here
-			// set auto variables <--
-			f1 = 10000;
-			t1 = 10000;
-			f2 = 10000;
-			t2 = 10000;
-			f3 = 10000;
-			left = true;
-
-		} else {
-			// Put right auto code here
-			// set auto variables <--
-			f1 = 10000;
-			t1 = 10000;
-			f2 = 10000;
-			t2 = 10000;
-			f3 = 10000;
-			left = false;
-		}
-	}
-
-	public void reset() {
-		leftEnc.reset();
-		rightEnc.reset();
-	}
 
 }
