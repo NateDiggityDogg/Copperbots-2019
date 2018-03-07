@@ -33,6 +33,7 @@ public class Robot extends TimedRobot {
 
 	// Controllers
 	XboxController driverController, operatorController;
+	Joystick leftStick, rightStick;
 
 	// Speed Controllers
 	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, lift;
@@ -97,7 +98,11 @@ public class Robot extends TimedRobot {
 	 */
 	@Override
 	public void robotInit() {
-
+		autoTimer = new Timer();
+		
+		//Camera
+		CameraServer.getInstance().startAutomaticCapture();
+		
 		// Pneumatics
 		comp = new Compressor();
 		comp.start();
@@ -107,8 +112,10 @@ public class Robot extends TimedRobot {
 		intakeDeploy = new DoubleSolenoid(4, 5);
 
 		// Controllers
-		driverController = new XboxController(0);
-		operatorController = new XboxController(1);
+		//******driverController = new XboxController(0);
+		operatorController = new XboxController(0);
+		leftStick = new Joystick(3);
+		rightStick = new Joystick(2);
 
 		// Encoders
 		leftEnc = new Encoder(0, 1);
@@ -132,19 +139,23 @@ public class Robot extends TimedRobot {
 		rearRight.set(ControlMode.Follower, 1);
 
 		// Lift
-		lift = new WPI_TalonSRX(6);
-		liftLow = new DigitalInput(7);
+		lift = new WPI_TalonSRX(5);
+		/*liftLow = new DigitalInput(7);
 		liftMid = new DigitalInput(8);
-		liftHigh = new DigitalInput(9);
+		liftHigh = new DigitalInput(9);*/
+		liftLow = new DigitalInput(9);
+		liftHigh = new DigitalInput(8);
 
 		// Intake
-		intakeLeft = new WPI_VictorSPX(5);
+		intakeLeft = new WPI_VictorSPX(7);
 		intakeRight = new WPI_VictorSPX(6);
 
 		// declaring the drive system
 		mainDrive = new DifferentialDrive(frontLeft, frontRight);
-		mainDrive.setSafetyEnabled(false);
+		/**Redundant line?*/mainDrive.setSafetyEnabled(false);
 		
+		//declaring sendable chooser for auton delay
+		SendableChooser delayUpload = new SendableChooser();
 		
 		// Auto Program Chooser [Smart Dash]
 		autoChooser.addDefault(autoChooserLine, autoChooserLine);
@@ -153,10 +164,11 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserSwitchLeft, autoChooserSwitchLeft);
 		autoChooser.addObject(autoChooserSwitchRight, autoChooserSwitchRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
+		/**&&&&&&&double auto_delay = SmartDashboard.getNumber("Autonomous Delay(Seconds)", 0);
+		double ms_auto_delay = auto_delay / 1000;*/
 	
 	}
 
-	// AUTONOMOUS PERIOD
 	@Override
 	public void robotPeriodic() {
 		smartDash();
@@ -179,34 +191,51 @@ public class Robot extends TimedRobot {
 
 	@Override
 	public void teleopPeriodic() {
+		//smartDash();
 
 		// Get joystick inputs for drive base
-		double driveLinear = -driverController.getY(GenericHID.Hand.kLeft);
-		double driveRotate = driverController.getX(GenericHID.Hand.kRight);
-
-		mainDrive.arcadeDrive(driveLinear, driveRotate);
+		
+//		*******double driveLinear = -driverController.getY(GenericHID.Hand.kLeft);
+//		*******double driveRotate = driverController.getX(GenericHID.Hand.kRight);
+//
+//		*******mainDrive.arcadeDrive(driveLinear, driveRotate);
+		
+		
+		double driveLeft = leftStick.getY() * -1;
+		double driveRight = rightStick.getY() * -1;
+		
+		mainDrive.tankDrive(driveLeft, driveRight);
 
 		// Shifter Control
-		if (driverController.getRawButton(5)) { // shift low
+		/**if (driverController.getRawButton(5)) { // shift low
 			shifter.set(DoubleSolenoid.Value.kForward);
 		}
 		if (driverController.getRawButton(6)) { // shift high
 			shifter.set(DoubleSolenoid.Value.kReverse);
+		}*/
+		
+		if(leftStick.getRawButton(1)) {//shift low
+			shifter.set(DoubleSolenoid.Value.kForward);
 		}
-
+		if(rightStick.getRawButton(1)) {//shift high
+			shifter.set(DoubleSolenoid.Value.kReverse);
+		}
+		
 		// Lift Control
-		double liftCommand = operatorController.getY(GenericHID.Hand.kLeft);
+		//double liftCommand = operatorController.getY(GenericHID.Hand.kLeft);
+		double liftCommand = operatorController.getRawAxis(1) * -1;
 
 		// Send speed command to the lift
-		liftControl(liftCommand);
+		//liftControl(liftCommand);
+		lift.set(liftCommand);
 		
 		// Command override level 9...
-		if (limitBreak) lift.set(liftCommand);
+		/**purpose*/if (limitBreak) lift.set(liftCommand);
 
 		
 		// Intake Control 
 		// Each trigger should allow you to either intake or eject
-		double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft) - operatorController.getTriggerAxis(GenericHID.Hand.kRight);
+		/**Purpose of this line and genericHID?*/double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft) - operatorController.getTriggerAxis(GenericHID.Hand.kRight);
 		intakeLeft.set(intakeCommand);
 		intakeRight.set(intakeCommand);
 
@@ -295,12 +324,18 @@ public class Robot extends TimedRobot {
 		
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
+		/*case 0:
+			if(autoTimer.get() > auto_delay) autoNextStep();
+			break;*/
+		
+		
 		case 1:
 			// Drive forward
 			mainDrive.arcadeDrive(0.35, 0.0);
 			
 			// Drive for a bit
-			if (autoTimer.get() < 5.0) autoNextStep();
+			//if (autoTimer.get() < 5.0) autoNextStep();
+			if (autoTimer.get() > 1.0) autoNextStep();
 			break;
 		
 		case 2:
@@ -327,12 +362,14 @@ public class Robot extends TimedRobot {
 		
 		// Pick a direction based on FMS data
 		double rot = 90;
-		if(gameData.length() > 1)		
+		/**Syntax question*/if(gameData.length() > 1)		
 			if(gameData.startsWith("R")) rot = -90;
 		
 		
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
+		/*&&&*case 1: liftControl(0.25);
+		if(autoTimer.get() > 0.5) autoNextStep();*/
 		case 1:
 			if (autoDrive(24.0, 0.0)) autoNextStep();
 			break;
@@ -341,11 +378,13 @@ public class Robot extends TimedRobot {
 			if (autoDrive(0.0, rot)) autoNextStep();
 			break;
 
-		case 3:
-			if (autoDrive(48.0, rot)) autoNextStep();
+	/** should second rotation be inverted?*/	
+			case 3:
+			if (autoDrive(48.0, -rot)) autoNextStep();
 			break;
 
-		case 4:
+	/**whats the purpose of case 4?*/
+			case 4:
 			if (autoDrive(0.0, 0.0)) autoNextStep();
 			break;
 
@@ -364,7 +403,7 @@ public class Robot extends TimedRobot {
 		}
 		
 		
-		// Raise the arm up to the mid-position switch
+		/**does this slowly raise the lift through the auton?*/// Raise the arm up to the mid-position switch
 		if (!liftMid.get())
 			// lift up slowly
 			liftControl(0.3);
@@ -400,24 +439,24 @@ public class Robot extends TimedRobot {
 		
 		// Proportional control to get started
 		// TODO: add integral term later perhaps
-		double kP = 1.0 / 36.0; // Start to slow down at 36 inches from target
+		/**Where is kP derived from?*/double kP = 1.0 / 36.0; // Start to slow down at 36 inches from target
 		double e_lin = (distance-d);
 		double lin = e_lin*kP;
 		
 		// Ramp up to speed to reduce wheel slippage
 		// TODO: We could probably use .getRate() and control the actual acceleration... 
-		double max_ramp_up = 0.075;
+		/**Is this max acceleration speed?*/double max_ramp_up = 0.075;
 		if (lin > dPrev + max_ramp_up) lin = dPrev + max_ramp_up;
 		dPrev = lin;
 		
 		// Limit max speed while testing...
 		// TODO: Increase / remove after validation.
-		lin = Math.max(lin, 0.4);
+		/**Does this work? Math.min?*/lin = Math.max(lin, 0.4);
 		
 		//
 		// Rotation
 		//
-		double kP_rot = 0.5/45.0; // start slowing down at 45 deg.
+		/**Where is kP_rot derived from? & why 0.5?*/double kP_rot = 0.5/45.0; // start slowing down at 45 deg.
 		double a = gyro.getYaw();
 		double e_rot = angle-a;
 		double rot = e_rot*kP_rot;
@@ -430,7 +469,7 @@ public class Robot extends TimedRobot {
 		
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if(e_lin > 0.5 || e_rot > 2.0) autoTimer.reset();
+		/**Is this a ticking system?*/if(e_lin > 0.5 || e_rot > 2.0) autoTimer.reset();
 		else if (autoTimer.get() > 0.75) return true;
 		
 		// Keep trying...
@@ -465,6 +504,11 @@ public class Robot extends TimedRobot {
 		
 		SmartDashboard.putNumber("Encoder Left [INCH]", leftEnc.getDistance());
 		SmartDashboard.putNumber("Encoder Right [INCH]", rightEnc.getDistance());
+	
+		
+		// Limit Switches
+		SmartDashboard.putBoolean("topSwitch", liftHigh.get());
+		SmartDashboard.putBoolean("lowSwitch", liftLow.get());
 
 		// Gyro
 		SmartDashboard.putNumber("Gyro Angle", gyro.getYaw());
