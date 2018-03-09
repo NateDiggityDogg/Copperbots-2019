@@ -119,11 +119,12 @@ public class Robot extends TimedRobot {
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
 
-		leftEnc.setDistancePerPulse(18.85 / 360.0); // [Inches/Pulses]
-		rightEnc.setDistancePerPulse(18.85 / 360.0); // [Inches/Pulses]
-		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the x1 value
-		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440 pulses per revolution
-		// 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
+		leftEnc.setDistancePerPulse(0.06 / 10.0); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(0.06 / 10.0); // [Inches/Pulses]
+		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the 4x value (4x is standard)
+		// the value for 2x is 0.12 inches per 10 pulses and the value for 1x is 0.24 inches per 10 pulses
+		// 8.69 inches is the value of one full encoder rotation and the wheels have an 18.85 inch circumference
+		// there are 2.17 encoder rotations for every wheel rotation because of the final drive sprockets
 		
 		// Gyro
 		gyro = new ADIS16448_IMU();
