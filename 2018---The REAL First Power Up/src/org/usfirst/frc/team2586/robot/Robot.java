@@ -3,13 +3,16 @@
  * 
  */
 
+
+
+
+//
 package org.usfirst.frc.team2586.robot;
 
 import com.analog.adis16448.frc.ADIS16448_IMU;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
-
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -24,6 +27,8 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.GenericHID;
+
+
 
 public class Robot extends TimedRobot {
 
@@ -54,7 +59,7 @@ public class Robot extends TimedRobot {
 	DoubleSolenoid intakeDeploy;
 
 	// Switches
-	DigitalInput liftLow, liftHigh, liftMid;
+	DigitalInput liftLow, liftHigh;
 
 	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
@@ -76,6 +81,8 @@ public class Robot extends TimedRobot {
 	
 	//variable used for initial calibration of teleop gyro
 	boolean isTrackingStraight = false;
+	boolean overrideControllers = false;
+	boolean gyroMode = true;
 
 	/*
 	 * AUTON STATE VARS
@@ -124,9 +131,13 @@ public class Robot extends TimedRobot {
 		// Encoders
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
-
-		leftEnc.setDistancePerPulse(18.85 / 360.0); // [Inches/Pulses]
-		rightEnc.setDistancePerPulse(18.85 / 360.0); // [Inches/Pulses]
+		
+		double kPulsesPerRevolution = 1440;
+		//theoretical value double kInchesPerRevolution = 18.8496;
+		double kInchesPerRevolution = 26;
+		double kInchesPerPulse = kInchesPerRevolution/kPulsesPerRevolution;
+		leftEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
 		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the x1 value
 		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440 pulses per revolution
 		// 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
@@ -152,8 +163,8 @@ public class Robot extends TimedRobot {
 		 * liftLow = new DigitalInput(7); liftMid = new DigitalInput(8); liftHigh = new
 		 * DigitalInput(9);
 		 */
-		liftLow = new DigitalInput(9);
-		liftHigh = new DigitalInput(8);
+		liftLow = new DigitalInput(5);
+		liftHigh = new DigitalInput(4);
 
 		// Intake
 		//intakeLeft = new WPI_VictorSPX(7);
@@ -206,15 +217,42 @@ public class Robot extends TimedRobot {
 		// Get joystick inputs for drive base
 		double driveLeft = deadZoneComp(leftStick.getY() * -1);
 		double driveRight = deadZoneComp(rightStick.getY() * -1);
-
+		
+		if(!overrideControllers) {
+		if(gyroMode) {
 		teleopGyro(driveLeft, driveRight);
-
+		}else {
+		mainDrive.tankDrive(driveLeft, driveRight);
+		}
+		}
 		// Shifter Control
 		if (leftStick.getRawButton(1)) {// shift low
 			shifter.set(DoubleSolenoid.Value.kForward);
 		}
 		if (rightStick.getRawButton(1)) {// shift high
 			shifter.set(DoubleSolenoid.Value.kReverse);
+		}
+		
+		if(leftStick.getRawButton(6)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(0.5, -0.5);	
+		}
+		if(leftStick.getRawButton(7)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(-0.5, 0.5);
+		}
+		if(!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
+			overrideControllers = false;
+		}
+		if(rightStick.getRawButton(11)) {
+			gyro.reset();
+			gyroMode = true;
+		}
+		if(rightStick.getRawButton(10)) {
+			gyro.reset();
+			gyroMode = false;
 		}
 
 		// Lift Control
@@ -331,7 +369,7 @@ public class Robot extends TimedRobot {
 			// Drive forward
 
 			// Drive for a bit
-			if (autoDrive(170))
+			if (autoDrive(84))
 				autoNextStep();
 			break;
 
@@ -356,9 +394,8 @@ public class Robot extends TimedRobot {
 	private void autoProgSwitchCenter() {
 
 		// Pick a direction based on FMS data
-		gameData = "LRL";
-		double rot = 45;
-		if (gameData.startsWith("R"))
+		double rot = 90;
+		if (gameData.startsWith("L"))
 			rot = -rot;
 
 		// Switch case for AUTONOMOUS SWITCH
@@ -380,7 +417,7 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 4:
-			if (autoDrive(48.0))
+			if (autoDrive(30.0))
 				autoNextStep();
 			break;
 
@@ -471,7 +508,7 @@ public class Robot extends TimedRobot {
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (e_lin > 40 || e_rot > 2.0)
+		if (e_lin > 30 || e_rot > 5.0)
 			autoTimer.reset();
 		else if (autoTimer.get() > 0.75)
 			return true;
@@ -494,7 +531,8 @@ public class Robot extends TimedRobot {
 
 		// Max drive speed
 		// TODO: Increase / remove after validation.
-		double maxSpeed = 0.4;
+		double maxSpeed = 0.6;
+		double minSpeed = 0.35;
 
 		// Update the target heading for autoDrive function
 		dHeading = heading;
@@ -508,13 +546,14 @@ public class Robot extends TimedRobot {
 
 		// Max rotation speed
 		rot = absMax(rot, maxSpeed);
+		rot = absMin(rot, minSpeed);
 
 		// Nothing left but to do it...
 		mainDrive.arcadeDrive(0.0, rot);
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (e_rot > 2.0)
+		if (Math.abs(e_rot) > 3.0)
 			autoTimer.reset();
 
 		else if (autoTimer.get() > 0.75)
@@ -534,6 +573,17 @@ public class Robot extends TimedRobot {
 			return Math.min(input, maxValue);
 		else
 			return Math.max(input, -maxValue);
+	}
+	
+	double absMin(double input, double minValue) {
+
+		// Just in case the max is negative
+		minValue = Math.abs(minValue);
+
+		if (input > 0)
+			return Math.max(input, minValue);
+		else
+			return Math.min(input, -minValue);
 	}
 
 	private void autoNextStep() {
@@ -578,7 +628,7 @@ public class Robot extends TimedRobot {
 	}
 	//function to keep robot tracking straight during teleop while joysticks are in similar positions
 	public void teleopGyro(double leftStick, double rightStick) {
-		double error = 1.0;
+		double error = 0.2;
 		double averageSpeed = (leftStick + rightStick) / 2;
 		if(leftStick >= rightStick-error && leftStick <= rightStick+error) {
 			if(!isTrackingStraight) {
