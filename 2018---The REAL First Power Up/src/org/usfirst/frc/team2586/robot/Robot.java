@@ -3,13 +3,16 @@
  * 
  */
 
+
+
+
+//
 package org.usfirst.frc.team2586.robot;
 
 import com.analog.adis16448.frc.ADIS16448_IMU;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
-
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -25,6 +28,8 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.GenericHID;
 
+
+
 public class Robot extends TimedRobot {
 
 	/*
@@ -37,7 +42,7 @@ public class Robot extends TimedRobot {
 
 	// Speed Controllers
 	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, lift;
-	WPI_VictorSPX intakeLeft, intakeRight;
+	//WPI_VictorSPX intakeLeft, intakeRight;
 
 	// Gyro
 	ADIS16448_IMU gyro;
@@ -54,7 +59,7 @@ public class Robot extends TimedRobot {
 	DoubleSolenoid intakeDeploy;
 
 	// Switches
-	DigitalInput liftLow, liftHigh, liftMid;
+	DigitalInput liftLow, liftHigh;
 
 	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
@@ -73,6 +78,11 @@ public class Robot extends TimedRobot {
 
 	// Disable soft-limits and let the operator do as they please
 	boolean limitBreak = false;
+	
+	//variable used for initial calibration of teleop gyro
+	boolean isTrackingStraight = false;
+	boolean overrideControllers = false;
+	boolean gyroMode = true;
 
 	/*
 	 * AUTON STATE VARS
@@ -90,6 +100,9 @@ public class Robot extends TimedRobot {
 	// autoDrive state vars
 	double dPrev = 0.0;
 	double dHeading = 0.0;
+	
+	//auto delay
+	double auto_delay;
 
 	/**
 	 * -------------------------------------------------------------------------------------------------------------------------------
@@ -118,17 +131,21 @@ public class Robot extends TimedRobot {
 		// Encoders
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
-
-		leftEnc.setDistancePerPulse(0.06 / 10.0); // [Inches/Pulses]
-		rightEnc.setDistancePerPulse(0.06 / 10.0); // [Inches/Pulses]
-		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the 4x value (4x is standard)
-		// the value for 2x is 0.12 inches per 10 pulses and the value for 1x is 0.24 inches per 10 pulses
-		// 8.69 inches is the value of one full encoder rotation and the wheels have an 18.85 inch circumference
-		// there are 2.17 encoder rotations for every wheel rotation because of the final drive sprockets
+		
+		double kPulsesPerRevolution = 1440;
+		//theoretical value double kInchesPerRevolution = 18.8496;
+		double kInchesPerRevolution = 26;
+		double kInchesPerPulse = kInchesPerRevolution/kPulsesPerRevolution;
+		leftEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
+		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the x1 value
+		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440 pulses per revolution
+		// 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
 		
 		// Gyro
 		gyro = new ADIS16448_IMU();
 		gyro.calibrate();
+		gyro.reset();
 
 		// Drivebase
 		frontRight = new WPI_TalonSRX(1);
@@ -146,16 +163,15 @@ public class Robot extends TimedRobot {
 		 * liftLow = new DigitalInput(7); liftMid = new DigitalInput(8); liftHigh = new
 		 * DigitalInput(9);
 		 */
-		liftLow = new DigitalInput(9);
-		liftHigh = new DigitalInput(8);
+		liftLow = new DigitalInput(5);
+		liftHigh = new DigitalInput(4);
 
 		// Intake
-		intakeLeft = new WPI_VictorSPX(7);
-		intakeRight = new WPI_VictorSPX(6);
+		//intakeLeft = new WPI_VictorSPX(7);
+		//intakeRight = new WPI_VictorSPX(6);
 
 		// declaring the drive system
 		mainDrive = new DifferentialDrive(frontLeft, frontRight);
-		/** Redundant line? */
 		mainDrive.setSafetyEnabled(false);
 
 		// declaring sendable chooser for auton delay
@@ -168,10 +184,8 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserSwitchLeft, autoChooserSwitchLeft);
 		autoChooser.addObject(autoChooserSwitchRight, autoChooserSwitchRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
-		/**
-		 * &&&&&&&double auto_delay = SmartDashboard.getNumber("Autonomous
-		 * Delay(Seconds)", 0); double ms_auto_delay = auto_delay / 1000;
-		 */
+		auto_delay = SmartDashboard.getNumber("Auto Delay", 0);
+		 
 
 		// Auton State Vars
 		autoTimer = new Timer();
@@ -201,17 +215,44 @@ public class Robot extends TimedRobot {
 	public void teleopPeriodic() {
 
 		// Get joystick inputs for drive base
-		double driveLeft = leftStick.getY() * -1;
-		double driveRight = rightStick.getY() * -1;
-
+		double driveLeft = deadZoneComp(leftStick.getY() * -1);
+		double driveRight = deadZoneComp(rightStick.getY() * -1);
+		
+		if(!overrideControllers) {
+		if(gyroMode) {
+		teleopGyro(driveLeft, driveRight);
+		}else {
 		mainDrive.tankDrive(driveLeft, driveRight);
-
+		}
+		}
 		// Shifter Control
 		if (leftStick.getRawButton(1)) {// shift low
 			shifter.set(DoubleSolenoid.Value.kForward);
 		}
 		if (rightStick.getRawButton(1)) {// shift high
 			shifter.set(DoubleSolenoid.Value.kReverse);
+		}
+		
+		if(leftStick.getRawButton(6)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(0.5, -0.5);	
+		}
+		if(leftStick.getRawButton(7)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(-0.5, 0.5);
+		}
+		if(!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
+			overrideControllers = false;
+		}
+		if(rightStick.getRawButton(11)) {
+			gyro.reset();
+			gyroMode = true;
+		}
+		if(rightStick.getRawButton(10)) {
+			gyro.reset();
+			gyroMode = false;
 		}
 
 		// Lift Control
@@ -235,8 +276,8 @@ public class Robot extends TimedRobot {
 		// Each trigger should allow you to either intake or eject
 		double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft)
 				- operatorController.getTriggerAxis(GenericHID.Hand.kRight);
-		intakeLeft.set(intakeCommand);
-		intakeRight.set(intakeCommand);
+		//intakeLeft.set(intakeCommand);
+		//intakeRight.set(intakeCommand);
 
 		// Claw Control
 		if (operatorController.getAButton()) {
@@ -318,17 +359,21 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-
+		
 		case 1:
-			// Drive forward
-			mainDrive.arcadeDrive(0.35, 0.0);
-
-			// Drive for a bit
-			if (autoTimer.get() > 1.0)
+			if(autoTimer.get() > auto_delay)
 				autoNextStep();
 			break;
 
 		case 2:
+			// Drive forward
+
+			// Drive for a bit
+			if (autoDrive(84))
+				autoNextStep();
+			break;
+
+		case 3:
 			// Stop!
 			mainDrive.stopMotor();
 
@@ -349,39 +394,44 @@ public class Robot extends TimedRobot {
 	private void autoProgSwitchCenter() {
 
 		// Pick a direction based on FMS data
-		double rot = 45;
-		if (gameData.startsWith("R"))
+		double rot = 90;
+		if (gameData.startsWith("L"))
 			rot = -rot;
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-
+		
 		case 1:
-			if (autoDrive(24.0))
+			if(autoTimer.get() > auto_delay)
 				autoNextStep();
 			break;
 
 		case 2:
-			if (autoTurn(rot))
+			if (autoDrive(100.0))
 				autoNextStep();
 			break;
 
 		case 3:
-			if (autoDrive(48.0))
+			if (autoTurn(rot))
 				autoNextStep();
 			break;
 
 		case 4:
-			if (autoTurn(0.0))
+			if (autoDrive(30.0))
 				autoNextStep();
 			break;
 
 		case 5:
-			if (autoDrive(36.0))
+			if (autoTurn(0.0))
 				autoNextStep();
 			break;
 
 		case 6:
+			if (autoDrive(36.0))
+				autoNextStep();
+			break;
+
+		case 7:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
 
@@ -390,14 +440,6 @@ public class Robot extends TimedRobot {
 
 			break;
 		}
-
-		// Raise the arm up to the mid-position switch
-		if (!liftMid.get())
-			// lift up slowly
-			liftControl(0.3);
-		else
-			// hold position
-			lift.set(0.0);
 
 	}
 
@@ -416,7 +458,7 @@ public class Robot extends TimedRobot {
 
 		// Max drive speed
 		// TODO: Increase / remove after validation.
-		double maxSpeed = 0.4;
+		double maxSpeed = 0.7;
 
 		//
 		// Linear
@@ -430,9 +472,9 @@ public class Robot extends TimedRobot {
 		// so use the larger of the two (absolute distance)
 		double d;
 		if (Math.abs(l) > Math.abs(r))
-			d = l;
+			d = Math.abs(l);
 		else
-			d = r;
+			d = Math.abs(r);
 
 		// Proportional control to get started
 		// TODO: add integral term later perhaps
@@ -454,9 +496,8 @@ public class Robot extends TimedRobot {
 		// Rotation
 		//
 
-		/** Where is kP_rot derived from? & why 0.5? */
 		double kP_rot = maxSpeed / 45.0; // start slowing down at 45 deg.
-		double e_rot = dHeading - gyro.getYaw();
+		double e_rot = dHeading - gyro.getAngleZ();
 		double rot = e_rot * kP_rot;
 
 		// Max rotation speed
@@ -467,7 +508,7 @@ public class Robot extends TimedRobot {
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (e_lin > 0.5 || e_rot > 2.0)
+		if (e_lin > 30 || e_rot > 5.0)
 			autoTimer.reset();
 		else if (autoTimer.get() > 0.75)
 			return true;
@@ -490,7 +531,8 @@ public class Robot extends TimedRobot {
 
 		// Max drive speed
 		// TODO: Increase / remove after validation.
-		double maxSpeed = 0.4;
+		double maxSpeed = 0.6;
+		double minSpeed = 0.35;
 
 		// Update the target heading for autoDrive function
 		dHeading = heading;
@@ -498,20 +540,20 @@ public class Robot extends TimedRobot {
 		//
 		// Rotation
 		//
-		/** Where is kP_rot derived from? & why 0.5? */
 		double kP_rot = maxSpeed / 45.0; // start slowing down at 45 deg.
-		double e_rot = heading - gyro.getYaw();
+		double e_rot = heading - gyro.getAngleZ();
 		double rot = e_rot * kP_rot;
 
 		// Max rotation speed
 		rot = absMax(rot, maxSpeed);
+		rot = absMin(rot, minSpeed);
 
 		// Nothing left but to do it...
 		mainDrive.arcadeDrive(0.0, rot);
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (e_rot > 2.0)
+		if (Math.abs(e_rot) > 3.0)
 			autoTimer.reset();
 
 		else if (autoTimer.get() > 0.75)
@@ -531,6 +573,17 @@ public class Robot extends TimedRobot {
 			return Math.min(input, maxValue);
 		else
 			return Math.max(input, -maxValue);
+	}
+	
+	double absMin(double input, double minValue) {
+
+		// Just in case the max is negative
+		minValue = Math.abs(minValue);
+
+		if (input > 0)
+			return Math.max(input, minValue);
+		else
+			return Math.min(input, -minValue);
 	}
 
 	private void autoNextStep() {
@@ -552,7 +605,7 @@ public class Robot extends TimedRobot {
 	 */
 
 	public void smartDash() {
-
+		
 		// Encoders
 		SmartDashboard.putNumber("Encoder Left [RAW]", leftEnc.getRaw());
 		SmartDashboard.putNumber("Encoder Right [RAW]", rightEnc.getRaw());
@@ -565,7 +618,7 @@ public class Robot extends TimedRobot {
 		SmartDashboard.putBoolean("lowSwitch", liftLow.get());
 
 		// Gyro
-		SmartDashboard.putNumber("Gyro Angle", gyro.getYaw());
+		SmartDashboard.putNumber("Gyro Angle", gyro.getAngleZ());
 
 		// Get Selected Auton Program
 		SmartDashboard.putString("Auto Program", autoChooser.getSelected());
@@ -573,5 +626,35 @@ public class Robot extends TimedRobot {
 		// Get Field data from FMS
 		gameData = DriverStation.getInstance().getGameSpecificMessage().toUpperCase();
 	}
+	//function to keep robot tracking straight during teleop while joysticks are in similar positions
+	public void teleopGyro(double leftStick, double rightStick) {
+		double error = 0.2;
+		double averageSpeed = (leftStick + rightStick) / 2;
+		if(leftStick >= rightStick-error && leftStick <= rightStick+error) {
+			if(!isTrackingStraight) {
+			gyro.reset();
+			isTrackingStraight = true;
+			}
+			double kP_rot = 0.5 / 45.0; // start slowing down at 45 deg.
+			double e_rot = 0 - gyro.getAngleZ();
+			double rot = e_rot * kP_rot;
+			
+			mainDrive.arcadeDrive(averageSpeed, rot);
+			
+			
+		}
+		else{
+			mainDrive.tankDrive(leftStick, rightStick);
+			isTrackingStraight = false;
+		}
+	}
 
+	public double deadZoneComp(double input) {
+		double deadZone = 0.1;
+		if(input <= deadZone && input >= -deadZone) {
+			return 0;
+		}else {
+			return input;
+		}
+	}
 }
