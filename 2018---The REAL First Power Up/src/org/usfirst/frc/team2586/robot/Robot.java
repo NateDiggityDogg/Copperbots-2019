@@ -8,9 +8,6 @@
  * 
  */
 
-
-
-
 //
 package org.usfirst.frc.team2586.robot;
 
@@ -33,8 +30,6 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.GenericHID;
-
-
 
 public class Robot extends TimedRobot {
 
@@ -69,8 +64,8 @@ public class Robot extends TimedRobot {
 
 	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
-	//SendableChooser<Integer>delayChooser = new SendableChooser<>();
-	//SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
+	// SendableChooser<Integer>delayChooser = new SendableChooser<>();
+	// SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
 	final String autoChooserNone = "None";
 	final String autoChooserLine = "line";
 	final String autoChooserSwitchCenter = "Center Switch";
@@ -86,18 +81,18 @@ public class Robot extends TimedRobot {
 
 	// Naming mainDrive
 	DifferentialDrive mainDrive;
-	
-	//John's tank drive controls for XBOX
+
+	// John's tank drive controls for XBOX
 	boolean isJohnModeEnabled = false;
 	// Disable soft-limits and let the operator do as they please
 	boolean limitBreak = false;
-	
-	//variable used for initial calibration of teleop gyro
+
+	// variable used for initial calibration of teleop gyro
 	boolean isTrackingStraight = false;
 	boolean overrideControllers = false;
 	boolean gyroMode = true;
-	
-	//booleans for redundancy controls
+
+	// booleans for redundancy controls
 	boolean liftOverride = false;
 
 	/*
@@ -117,10 +112,15 @@ public class Robot extends TimedRobot {
 	// autoDrive state vars
 	double dPrev = 0.0;
 	double dHeading = 0.0;
-	
+	double loopTime = 0.02;
+	double error = 0;
+	double previousError = 0;
+	double sumError = 0;
+	double dError = 0;
+
 	double steady;
-	
-	//auto delay
+
+	// auto delay
 	double auto_delay;
 
 	/**
@@ -151,17 +151,20 @@ public class Robot extends TimedRobot {
 		// Encoders
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
-		
+
 		double kPulsesPerRevolution = 1440;
-		//theoretical value double kInchesPerRevolution = 18.8496;
+		// theoretical value double kInchesPerRevolution = 18.8496;
 		double kInchesPerRevolution = 26;
-		double kInchesPerPulse = kInchesPerRevolution/kPulsesPerRevolution;
+		double kInchesPerPulse = kInchesPerRevolution / kPulsesPerRevolution;
 		leftEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
 		rightEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
-		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted the x1 value
-		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440 pulses per revolution
-		// 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
-		
+		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted
+		// the x1 value
+		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440
+		// pulses per revolution
+		// 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x
+		// is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
+
 		// Gyro
 		gyro = new ADIS16448_IMU();
 		gyro.calibrate();
@@ -204,19 +207,19 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserScaleCenter, autoChooserScaleCenter);
 		autoChooser.addObject(autoChooserScaleRight, autoChooserScaleRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
-		
-		//Sendable chooser for autonomous delay [Smart Dash]
-//		delayChooser.addDefault("0", 0);
-//		delayChooser.addObject("3", 3);
-//		delayChooser.addObject("5", 5);
-//		SmartDashboard.putNumber("auto delay", delayChooser.getSelected());
-//		
-//		//Sendable chooser for "John Mode" [Smart Dash]
-//		auto_delay = delayChooser.getSelected();
-//		johnModeChooser.addDefault("false", false);
-//		johnModeChooser.addObject("true", true);
-//		SmartDashboard.putBoolean("John Mode", johnModeChooser.getSelected());
-		
+
+		// Sendable chooser for autonomous delay [Smart Dash]
+		// delayChooser.addDefault("0", 0);
+		// delayChooser.addObject("3", 3);
+		// delayChooser.addObject("5", 5);
+		// SmartDashboard.putNumber("auto delay", delayChooser.getSelected());
+		//
+		// //Sendable chooser for "John Mode" [Smart Dash]
+		// auto_delay = delayChooser.getSelected();
+		// johnModeChooser.addDefault("false", false);
+		// johnModeChooser.addObject("true", true);
+		// SmartDashboard.putBoolean("John Mode", johnModeChooser.getSelected());
+
 		// Auton State Vars
 		autoTimer = new Timer();
 		secondaryTimer = new Timer();
@@ -244,12 +247,12 @@ public class Robot extends TimedRobot {
 
 	@Override
 	public void teleopPeriodic() {
-		if(isJohnModeEnabled) {
+		if (isJohnModeEnabled) {
 			johnMode();
-		}else{
+		} else {
 			regularDrive();
 		}
-		
+
 		// Lift Control
 		double liftCommand = deadZoneComp(operatorController.getRawAxis(1) * -1);
 		// Override all soft limits
@@ -263,8 +266,8 @@ public class Robot extends TimedRobot {
 		if (limitBreak) {
 			lift.set(liftCommand);
 		} else {
-			if(!liftOverride) {
-			liftControl(liftCommand);
+			if (!liftOverride) {
+				liftControl(liftCommand);
 			}
 		}
 
@@ -282,17 +285,8 @@ public class Robot extends TimedRobot {
 		if (operatorController.getAButton()) {
 			clamp.set(DoubleSolenoid.Value.kForward); // Close
 		}
-		if (operatorController.getXButton()) {
-			clamp.set(DoubleSolenoid.Value.kForward); // Close w/ assistance
-			autoTimer.reset();
-			autoTimer.start();
-			if(autoTimer.get() < 1) {
-				autoDump(-0.3);
-			}else {
-				autoDump(0);
-			}
-		}
-		if(operatorController.getYButton()) {
+
+		if (operatorController.getYButton()) {
 			clamp.set(DoubleSolenoid.Value.kReverse);
 		}
 
@@ -331,6 +325,8 @@ public class Robot extends TimedRobot {
 		gyro.reset();
 		dHeading = 0.0;
 
+		shifter.set(DoubleSolenoid.Value.kReverse);
+
 		// Restart the auto sequence
 		autoStep = 0;
 		autoNextStep();
@@ -350,23 +346,23 @@ public class Robot extends TimedRobot {
 		case autoChooserSwitchCenter:
 			autoProgSwitchCenter();
 			break;
-			
+
 		case autoChooserSwitchCenterAngled:
 			autoProgSwitchCenterAngled();
 			break;
-		
+
 		case autoChooserSwitchLeft:
 			autoProgSwitchLeft();
 			break;
-		
+
 		case autoChooserSwitchRight:
 			autoProgSwitchRight();
 			break;
-			
+
 		case autoChooserScaleCenter:
 			autoProgScaleCenter();
 			break;
-		
+
 		case autoChooserScaleRight:
 			autoProgScaleRight();
 			break;
@@ -384,9 +380,9 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-		
+
 		case 1:
-			if(autoTimer.get() > auto_delay)
+			if (autoTimer.get() > auto_delay)
 				autoNextStep();
 			break;
 
@@ -394,13 +390,13 @@ public class Robot extends TimedRobot {
 			// Drive forward
 
 			// Drive for a bit
-			if (autoDrive(120))
+			if (autoDrive(140))
 				autoNextStep();
 			break;
 
 		case 3:
 			// Stop!
-			mainDrive.stopMotor();
+			freeze();
 
 			// Hammer time... :)
 			break;
@@ -425,9 +421,9 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-		
+
 		case 1:
-			if(autoTimer.get() > auto_delay)
+			if (autoTimer.get() > auto_delay)
 				autoNextStep();
 			break;
 
@@ -442,42 +438,41 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 4:
-			if (autoDrive(24.0)) {
+			if (autoDrive(48.0)) {
 				autoNextStep();
 			}
 			break;
 
-		
-			
 		case 5:
 			liftControl(0.6);
-			if(autoTimer.get() > 2.0) {
+			if (autoTimer.get() > 2.0) {
 				lift.set(0);
 				autoNextStep();
 			}
 			break;
-			
+
 		case 6:
 			if (autoTurn(0.0))
 				autoNextStep();
 			break;
-			
+
 		case 7:
-			if (autoDrive(50.0) || secondaryTimer.get() > 4.0) {
+			if (autoDrive(70.0) || secondaryTimer.get() > 4.0) {
 				autoNextStep();
 			}
 			break;
-			
+
 		case 8:
-		intakeDeploy.set(DoubleSolenoid.Value.kReverse);
+			intakeDeploy.set(DoubleSolenoid.Value.kReverse);
 			autoNextStep();
 			break;
 
 		case 9:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
-			autoDump(0.3);
-
+			if(autoDump(0.3)) {
+				autoNextStep();
+			}
 			// Stop!
 			mainDrive.stopMotor();
 
@@ -485,243 +480,231 @@ public class Robot extends TimedRobot {
 		}
 
 	}
-	
-	private void autoProgSwitchCenterAngled(){
-		double rot = 59.89;
-		if(gameData.startsWith("L")) {
+
+	private void autoProgSwitchCenterAngled() {
+		double rot = 50.6;
+		if (gameData.startsWith("L")) {
 			rot = -rot;
 		}
-		switch(autoStep) {
+		switch (autoStep) {
 		case 1:
-			if(autoDrive(12)) autoNextStep();
+			if (autoDrive(24))
+				autoNextStep();
 			break;
-			
+
 		case 2:
-			if(autoTurn(rot)) autoNextStep();
+			if (autoTurn(rot))
+				autoNextStep();
 			break;
-			
+
 		case 3:
-		if(autoDrive(115.6)) autoNextStep();
+			if (autoDrive(73.76))
+				autoNextStep();
 			break;
-			
+
 		case 4:
 			liftControl(0.6);
-			if(autoTimer.get() > 2.0) {
+			if (autoTimer.get() > 2.0) {
 				lift.set(0);
 				autoNextStep();
 			}
 			break;
-			
+
 		case 5:
-			if(autoTurn(0)) autoNextStep();
+			if (autoTurn(0))
+				autoNextStep();
 			break;
-			
+
 		case 6:
-			if(autoDrive(12)) autoNextStep();
+			if (autoDrive(24))
+				autoNextStep();
 			break;
-			
+
 		case 7:
 			intakeDeploy.set(DoubleSolenoid.Value.kReverse);
-				autoNextStep();
-				break;
+			autoNextStep();
+			break;
 
 		case 8:
-				// Drop it like it's hot...
-				clamp.set(DoubleSolenoid.Value.kReverse); // Open
-				autoDump(0.3);
-
-				// Stop!
-				mainDrive.stopMotor();
-
-				break;
-			
-		}
-	}
-	
-	private void autoProgSwitchLeft() {
-		double rot = 90;
-		if(gameData.startsWith("L")) {
-		switch(autoStep) {
-		case 1:
-		if(autoDrive(120)) autoNextStep();
-		break;
-		
-		case 2:
-		liftControl(0.6);
-		if(autoTimer.get() > 1.75) {
-			liftControl(0.0);
-			autoNextStep();
-		}
-		break;
-		
-		case 3:
-		autoTurn(rot);
-		autoNextStep();
-		break;
-		
-		case 4:
-		autoDrive(18);
-		break;
-		
-		case 5:
-		autoDump(-0.3);
-		clamp.set(DoubleSolenoid.Value.kReverse);
-		}
-		}else {
-		switch(autoStep) {
-		case 1:
-		if(autoDrive(120)) autoNextStep();
-		break;
-		
-//		case 2:
-//		if(autoTurn(rot));
-//		autoNextStep();
-//		break;
-//		
-//		case 3:
-//		if(autoDrive(100)) autoNextStep();
-//		break;
-//		
-//		case 4:
-//		if(autoTurn(0)) autoNextStep();
-//		break;
-//		
-//		case 5:
-//		if(autoDrive(52)) autoNextStep();
-//		break;
-//		
-//		case 6:
-//		autoDump(0.3);
-//		break;
-		}
-		}
-	}
-	
-	private void autoProgSwitchRight(){
-		double rot = -90;
-		if(gameData.startsWith("R")) {
-		switch(autoStep) {
-		case 1:
-		if(autoDrive(120)) autoNextStep();
-		break;
-		
-		case 2:
-			liftControl(0.6);
-			if(autoTimer.get() > 1.75) {
-				liftControl(0.0);
+			// Drop it like it's hot...
+			clamp.set(DoubleSolenoid.Value.kReverse); // Open
+			if(autoDump(0.3)) {
 				autoNextStep();
 			}
+			// Stop!
+			mainDrive.stopMotor();
+
 			break;
-		
-		case 3:
-		autoTurn(rot);
-		autoNextStep();
-		break;
-		
-		case 4:
-		autoDrive(18);
-		break;
-		
-		case 5:
-		autoDump(-0.3);
-		clamp.set(DoubleSolenoid.Value.kReverse);
-		}
-		}else {
-		switch(autoStep) {
-		case 1:
-		if(autoDrive(120)) autoNextStep();
-		break;
-		
-//		case 2:
-//		if(autoTurn(rot));
-//		autoNextStep();
-//		break;
-//		
-//		case 3:
-//		if(autoDrive(100)) autoNextStep();
-//		break;
-//		
-//		case 4:
-//		if(autoTurn(0)) autoNextStep();
-//		break;
-//		
-//		case 5:
-//		if(autoDrive(52)) autoNextStep();
-//		break;
-//		
-//		case 6:
-//		autoDump(0.3);
-//		break;
-		}
+
 		}
 	}
-	
+
+	private void autoProgSwitchLeft() {
+		double rot = 90;
+		if (gameData.startsWith("L")) {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(140))
+					autoNextStep();
+				break;
+
+			case 2:
+				liftControl(0.6);
+				if (autoTimer.get() > 1.75) {
+					liftControl(0.0);
+					autoNextStep();
+				}
+				break;
+
+			case 3:
+				if(autoTurn(rot))
+				autoNextStep();
+				break;
+
+			case 4:
+				if(autoDrive(24) || autoTimer.get() > 2)
+					autoNextStep();
+				break;
+
+			case 5:
+				if(autoDump(-0.3)) {
+					autoNextStep();
+				}
+				clamp.set(DoubleSolenoid.Value.kReverse);
+			}
+		} else {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(120))
+					autoNextStep();
+				break;
+
+			}
+		}
+	}
+
+	private void autoProgSwitchRight() {
+		double rot = -90;
+		if (gameData.startsWith("R")) {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(140))
+					autoNextStep();
+				break;
+
+			case 2:
+				liftControl(0.6);
+				if (autoTimer.get() > 1.75) {
+					liftControl(0.0);
+					autoNextStep();
+				}
+				break;
+
+			case 3:
+				if(autoTurn(rot))
+				autoNextStep();
+				break;
+
+			case 4:
+				if(autoDrive(24))
+				autoNextStep();
+				break;
+
+			case 5:
+				if(autoDump(0.3)) {
+				autoNextStep();
+				}
+				clamp.set(DoubleSolenoid.Value.kReverse);
+			}
+		} else {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(140))
+					autoNextStep();
+				break;
+
+			}
+		}
+	}
+
 	private void autoProgScaleCenter() {
 
 	}
-	
+
 	private void autoProgScaleRight() {
 		double rot = -90;
-		if(gameData.startsWith("R")) {
-		switch(autoStep) {
-		case 1:
-			if(autoTimer.get() > auto_delay) autoNextStep();
-			break;
-		
-		case 2:
-			liftControl(0.3);
-			if(autoTimer.get() > 0.5) autoNextStep();
-			break;
-			
-		case 3:
-			if(autoDrive(240)) autoNextStep();
-			break;
-		
-		case 4:
-			if(autoTurn(rot)) autoNextStep();
-			break;
-		case 5:
-			if(autoDrive(24)) autoNextStep();
-			break;
-		case 6:
-			autoDump(0.3);
-			break;
-		}
-		}else {
-		switch(autoStep) {
-		case 1:
-			if(autoTimer.get() > auto_delay) autoNextStep();
-			break;
-			
-		case 2:
-			liftControl(0.3);
-			if(autoTimer.get() > 0.5) autoNextStep();
-			break;
-		
-		case 3:
-			if(autoDrive(200)) autoNextStep();
-			break;
-		
-		case 4:
-			if(autoTurn(rot)) autoNextStep();
-			break;
-			
-		case 5:
-			if(autoDrive(160)) autoNextStep();
-			break;
-			
-		case 6:
-			if(autoTurn(0)) autoNextStep();
-			break;
-			
-		case 7:
-			if(autoDrive(40)) autoNextStep();
-			break;
-			
-		case 8:
-			autoDump(0.3);
-			break;
-		}
+		if (gameData.startsWith("R")) {
+			switch (autoStep) {
+			case 1:
+				if (autoTimer.get() > auto_delay)
+					autoNextStep();
+				break;
+
+			case 2:
+				liftControl(0.3);
+				if (autoTimer.get() > 0.5)
+					autoNextStep();
+				break;
+
+			case 3:
+				if (autoDrive(240))
+					autoNextStep();
+				break;
+
+			case 4:
+				if (autoTurn(rot))
+					autoNextStep();
+				break;
+			case 5:
+				if (autoDrive(24))
+					autoNextStep();
+				break;
+			case 6:
+				autoDump(0.3);
+				break;
+			}
+		} else {
+			switch (autoStep) {
+			case 1:
+				if (autoTimer.get() > auto_delay)
+					autoNextStep();
+				break;
+
+			case 2:
+				liftControl(0.3);
+				if (autoTimer.get() > 0.5)
+					autoNextStep();
+				break;
+
+			case 3:
+				if (autoDrive(200))
+					autoNextStep();
+				break;
+
+			case 4:
+				if (autoTurn(rot))
+					autoNextStep();
+				break;
+
+			case 5:
+				if (autoDrive(160))
+					autoNextStep();
+				break;
+
+			case 6:
+				if (autoTurn(0))
+					autoNextStep();
+				break;
+
+			case 7:
+				if (autoDrive(40))
+					autoNextStep();
+				break;
+
+			case 8:
+				autoDump(0.3);
+				break;
+			}
 		}
 	}
 
@@ -753,19 +736,33 @@ public class Robot extends TimedRobot {
 		// If an encoder fails, we assume that it stops generating pulses
 		// so use the larger of the two (absolute distance)
 		double d;
-		if (Math.abs(l) > Math.abs(r))
-			d = Math.abs(l);
-		else
-			d = Math.abs(r);
+		if (Math.abs(l) > Math.abs(r)) {
+			d = l;
+		} else {
+			d = r;
+		}
 
-		// Proportional control to get started
-		// TODO: add integral term later perhaps
-		double kP = maxSpeed / 36.0; // Start to slow down at 36 inches from target
-		double e_lin = distance - d;
-		double lin = e_lin * kP;
+		error = distance - d;
+		// Linear-Proportional control
+		// double kP = maxSpeed / 36.0; // Start to slow down at 36 inches from target
+		double kP = .0311;
+		// Linear-Integral control
+		double kI = 0;
+		if (error < 24) {
+			sumError = sumError += error / loopTime;
+		} else {
+			sumError = 0;
+		}
+
+		// Linear-Derivative control
+		double kD = 0.004;
+		dError = (error - previousError) / loopTime;
+
+		double lin = (kP * error) + (kI * sumError) + (kD * dError);
+
+		previousError = error;
 
 		// Ramp up to speed to reduce wheel slippage
-		// TODO: We could probably use .getRate() and control the actual acceleration...
 		double max_ramp_up = 0.075;
 		if (lin > dPrev + max_ramp_up)
 			lin = dPrev + max_ramp_up;
@@ -790,7 +787,7 @@ public class Robot extends TimedRobot {
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (e_lin > 30 || e_rot > 5.0)
+		if (error > 2 || e_rot > 3.0)
 			autoTimer.reset();
 		else if (autoTimer.get() > 0.75)
 			return true;
@@ -814,7 +811,6 @@ public class Robot extends TimedRobot {
 		// Max drive speed
 		// TODO: Increase / remove after validation.
 		double maxSpeed = 0.7;
-		double minSpeed = 0.4;
 
 		// Update the target heading for autoDrive function
 		dHeading = heading;
@@ -828,7 +824,6 @@ public class Robot extends TimedRobot {
 
 		// Max rotation speed
 		rot = absMax(rot, maxSpeed);
-		rot = absMin(rot, minSpeed);
 
 		// Nothing left but to do it...
 		mainDrive.arcadeDrive(0.0, rot);
@@ -845,21 +840,23 @@ public class Robot extends TimedRobot {
 		return false;
 	}
 
-	private void autoDump(double x) {
+	private boolean autoDump(double x) {
 		intakeLeft.set(x);
 		intakeRight.set(x);
-		if(autoTimer.get() > 0.75) {
+		if (autoTimer.get() > 1) {
 			freeze();
+			return true;
 		}
+		return false;
 	}
-	
-	private void freeze(){
+
+	private void freeze() {
 		mainDrive.stopMotor();
 		lift.stopMotor();
 		intakeLeft.stopMotor();
 		intakeRight.stopMotor();
 	}
-	
+
 	// Limits the output of a PWM signal
 	double absMax(double input, double maxValue) {
 
@@ -871,7 +868,7 @@ public class Robot extends TimedRobot {
 		else
 			return Math.max(input, -maxValue);
 	}
-	
+
 	double absMin(double input, double minValue) {
 
 		// Just in case the max is negative
@@ -891,9 +888,11 @@ public class Robot extends TimedRobot {
 		// Reset the Auton timer
 		autoTimer.reset();
 		autoTimer.start();
-		
+
 		secondaryTimer.reset();
 		secondaryTimer.start();
+
+		freeze();
 
 		// Go to the next step
 		autoStep++;
@@ -908,13 +907,13 @@ public class Robot extends TimedRobot {
 		// Get joystick inputs for drive base
 		double driveLeft = deadZoneComp(leftStick.getY() * -1);
 		double driveRight = deadZoneComp(rightStick.getY() * -1);
-		
-		if(!overrideControllers) {
-		if(gyroMode) {
-		teleopGyro(driveLeft, driveRight);
-		}else {
-		mainDrive.tankDrive(driveLeft, driveRight);
-		}
+
+		if (!overrideControllers) {
+			if (gyroMode) {
+				teleopGyro(driveLeft, driveRight);
+			} else {
+				mainDrive.tankDrive(driveLeft, driveRight);
+			}
 		}
 		// Shifter Control
 		if (leftStick.getRawButton(1)) {// shift low
@@ -923,53 +922,53 @@ public class Robot extends TimedRobot {
 		if (rightStick.getRawButton(1)) {// shift high
 			shifter.set(DoubleSolenoid.Value.kForward);
 		}
-		
-		if(leftStick.getRawButton(6)) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(0.5, -0.5);	
+
+		if (leftStick.getRawButton(6)) {
+			overrideControllers = true;
+			gyroMode = false;
+			mainDrive.tankDrive(0.5, -0.5);
 		}
-		if(leftStick.getRawButton(7)) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(-0.5, 0.5);
+		if (leftStick.getRawButton(7)) {
+			overrideControllers = true;
+			gyroMode = false;
+			mainDrive.tankDrive(-0.5, 0.5);
 		}
-		if(!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
+		if (!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
 			overrideControllers = false;
 		}
-		if(rightStick.getRawButton(11)) {
+		if (rightStick.getRawButton(11)) {
 			gyro.reset();
 			gyroMode = true;
 		}
-		if(rightStick.getRawButton(10)) {
+		if (rightStick.getRawButton(10)) {
 			gyro.reset();
 			gyroMode = false;
 		}
-		if(rightStick.getRawButton(2)) {
-		liftOverride = true;
-		liftControl(0.3);
+		if (rightStick.getRawButton(2)) {
+			liftOverride = true;
+			liftControl(0.3);
 		}
-		if(rightStick.getRawButton(3)) {
-		liftOverride = true;
-		liftControl(-0.3);
+		if (rightStick.getRawButton(3)) {
+			liftOverride = true;
+			liftControl(-0.3);
 		}
-		if(!rightStick.getRawButton(6) && !rightStick.getRawButton(7)) {
-		liftOverride = false;
+		if (!rightStick.getRawButton(6) && !rightStick.getRawButton(7)) {
+			liftOverride = false;
 		}
 	}
-	
+
 	public void johnMode() {
 
 		// Get joystick inputs for drive base
 		double driveLeft = deadZoneComp(johnController.getRawAxis(1) * -1);
 		double driveRight = deadZoneComp(johnController.getRawAxis(5) * -1);
-		
-		if(!overrideControllers) {
-		if(gyroMode) {
-		teleopGyro(driveLeft, driveRight);
-		}else {
-		mainDrive.tankDrive(driveLeft, driveRight);
-		}
+
+		if (!overrideControllers) {
+			if (gyroMode) {
+				teleopGyro(driveLeft, driveRight);
+			} else {
+				mainDrive.tankDrive(driveLeft, driveRight);
+			}
 		}
 		// Shifter Control
 		if (johnController.getRawAxis(2) > 0.5) {// shift low w/ left trigger
@@ -978,43 +977,43 @@ public class Robot extends TimedRobot {
 		if (johnController.getRawAxis(3) > 0.5) {// shift high w/ high trigger
 			shifter.set(DoubleSolenoid.Value.kForward);
 		}
-		
-		if(johnController.getPOV() == 90) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(0.5, -0.5);	
+
+		if (johnController.getPOV() == 90) {
+			overrideControllers = true;
+			gyroMode = false;
+			mainDrive.tankDrive(0.5, -0.5);
 		}
-		if(johnController.getPOV() == 270) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(-0.5, 0.5);
+		if (johnController.getPOV() == 270) {
+			overrideControllers = true;
+			gyroMode = false;
+			mainDrive.tankDrive(-0.5, 0.5);
 		}
-		if(johnController.getPOV() != 270 && johnController.getPOV() != 90) {
+		if (johnController.getPOV() != 270 && johnController.getPOV() != 90) {
 			overrideControllers = false;
 		}
-		if(johnController.getAButton()) {
+		if (johnController.getAButton()) {
 			gyro.reset();
 			gyroMode = true;
 		}
-		if(johnController.getBButton()) {
+		if (johnController.getBButton()) {
 			gyro.reset();
 			gyroMode = false;
 		}
-		if(johnController.getRawButton(6)) {
-		liftOverride = true;
-		liftControl(0.3);
+		if (johnController.getRawButton(6)) {
+			liftOverride = true;
+			liftControl(0.3);
 		}
-		if(johnController.getRawButton(5)) {
-		liftOverride = true;
-		liftControl(-0.3);
+		if (johnController.getRawButton(5)) {
+			liftOverride = true;
+			liftControl(-0.3);
 		}
-		if(!johnController.getRawButton(5) && !johnController.getRawButton(6)) {
-		liftOverride = false;
+		if (!johnController.getRawButton(5) && !johnController.getRawButton(6)) {
+			liftOverride = false;
 		}
 	}
 
 	public void smartDash() {
-		
+
 		// Encoders
 		SmartDashboard.putNumber("Encoder Left [RAW]", leftEnc.getRaw());
 		SmartDashboard.putNumber("Encoder Right [RAW]", rightEnc.getRaw());
@@ -1034,28 +1033,28 @@ public class Robot extends TimedRobot {
 
 		SmartDashboard.putBoolean("John-Mode", isJohnModeEnabled);
 		SmartDashboard.putNumber("Auton delay", auto_delay);
-		
+
 		// Get Field data from FMS
 		gameData = DriverStation.getInstance().getGameSpecificMessage().toUpperCase();
 	}
-	//function to keep robot tracking straight during teleop while joysticks are in similar positions
+
+	// function to keep robot tracking straight during teleop while joysticks are in
+	// similar positions
 	public void teleopGyro(double leftStick, double rightStick) {
 		double error = 0.2;
 		double averageSpeed = (leftStick + rightStick) / 2;
-		if(leftStick >= rightStick-error && leftStick <= rightStick+error) {
-			if(!isTrackingStraight) {
-			gyro.reset();
-			isTrackingStraight = true;
+		if (leftStick >= rightStick - error && leftStick <= rightStick + error) {
+			if (!isTrackingStraight) {
+				gyro.reset();
+				isTrackingStraight = true;
 			}
 			double kP_rot = 0.5 / 45.0; // start slowing down at 45 deg.
 			double e_rot = 0 - gyro.getAngleZ();
 			double rot = e_rot * kP_rot;
-			
+
 			mainDrive.arcadeDrive(averageSpeed, rot);
-			
-			
-		}
-		else{
+
+		} else {
 			mainDrive.tankDrive(leftStick, rightStick);
 			isTrackingStraight = false;
 		}
@@ -1063,9 +1062,9 @@ public class Robot extends TimedRobot {
 
 	public double deadZoneComp(double input) {
 		double deadZone = 0.15;
-		if(input <= deadZone && input >= -deadZone) {
+		if (input <= deadZone && input >= -deadZone) {
 			return 0;
-		}else {
+		} else {
 			return input;
 		}
 	}
