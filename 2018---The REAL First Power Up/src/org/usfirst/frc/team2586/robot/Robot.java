@@ -14,7 +14,6 @@ package org.usfirst.frc.team2586.robot;
 import com.analog.adis16448.frc.ADIS16448_IMU;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
-import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -64,16 +63,19 @@ public class Robot extends TimedRobot {
 
 	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
-	// SendableChooser<Integer>delayChooser = new SendableChooser<>();
-	// SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
+	SendableChooser<Integer>delayChooser = new SendableChooser<>();
+	SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
 	final String autoChooserNone = "None";
 	final String autoChooserLine = "line";
 	final String autoChooserSwitchCenter = "Center Switch";
 	final String autoChooserSwitchCenterAngled = "Angled switch auton";
 	final String autoChooserSwitchLeft = "Left Switch";
 	final String autoChooserSwitchRight = "Right Switch";
+	final String autoChooserScaleLeft = "Left Scale";
 	final String autoChooserScaleCenter = "Center Scale";
 	final String autoChooserScaleRight = "Right Scale";
+	final String autoChooserScalePrefLeft = "PREF Left Scale";
+	final String autoChooserScalePrefRight = "PREF Right Scale";
 
 	/*
 	 * VARIABLE DECLARATIONS
@@ -142,7 +144,6 @@ public class Robot extends TimedRobot {
 		intakeDeploy = new DoubleSolenoid(6, 7);
 
 		// Controllers
-		// ******driverController = new XboxController(0);
 		operatorController = new XboxController(0);
 		johnController = new XboxController(4);
 		leftStick = new Joystick(3);
@@ -204,21 +205,24 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserSwitchCenterAngled, autoChooserSwitchCenterAngled);
 		autoChooser.addObject(autoChooserSwitchLeft, autoChooserSwitchLeft);
 		autoChooser.addObject(autoChooserSwitchRight, autoChooserSwitchRight);
+		autoChooser.addObject(autoChooserScaleLeft, autoChooserScaleLeft);
 		autoChooser.addObject(autoChooserScaleCenter, autoChooserScaleCenter);
 		autoChooser.addObject(autoChooserScaleRight, autoChooserScaleRight);
+		autoChooser.addObject(autoChooserScalePrefLeft, autoChooserScalePrefLeft);
+		autoChooser.addObject(autoChooserScalePrefRight, autoChooserScalePrefRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
 
 		// Sendable chooser for autonomous delay [Smart Dash]
-		// delayChooser.addDefault("0", 0);
-		// delayChooser.addObject("3", 3);
-		// delayChooser.addObject("5", 5);
-		// SmartDashboard.putNumber("auto delay", delayChooser.getSelected());
-		//
-		// //Sendable chooser for "John Mode" [Smart Dash]
-		// auto_delay = delayChooser.getSelected();
-		// johnModeChooser.addDefault("false", false);
-		// johnModeChooser.addObject("true", true);
-		// SmartDashboard.putBoolean("John Mode", johnModeChooser.getSelected());
+		 delayChooser.addDefault("0", 0);
+		 delayChooser.addObject("3", 3);
+		 delayChooser.addObject("5", 5);
+		 SmartDashboard.putData("auto delay", delayChooser);
+		 auto_delay = delayChooser.getSelected();
+		
+		 //Sendable chooser for "John Mode" [Smart Dash]
+		 johnModeChooser.addDefault("false", false);
+		 johnModeChooser.addObject("true", true);
+		 SmartDashboard.putData("John Mode", johnModeChooser);
 
 		// Auton State Vars
 		autoTimer = new Timer();
@@ -359,12 +363,24 @@ public class Robot extends TimedRobot {
 			autoProgSwitchRight();
 			break;
 
+		case autoChooserScaleLeft:
+			autoProgScaleLeft();
+			break;
+
 		case autoChooserScaleCenter:
 			autoProgScaleCenter();
 			break;
 
 		case autoChooserScaleRight:
 			autoProgScaleRight();
+			break;
+			
+		case autoChooserScalePrefLeft:
+			autoProgScalePrefLeft();
+			break;
+
+		case autoChooserScalePrefRight:
+			autoProgScalePrefRight();
 			break;
 		}
 
@@ -470,7 +486,7 @@ public class Robot extends TimedRobot {
 		case 9:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
-			if(autoDump(0.3)) {
+			if (autoDump(0.3)) {
 				autoNextStep();
 			}
 			// Stop!
@@ -528,7 +544,7 @@ public class Robot extends TimedRobot {
 		case 8:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
-			if(autoDump(0.3)) {
+			if (autoDump(0.3)) {
 				autoNextStep();
 			}
 			// Stop!
@@ -557,17 +573,17 @@ public class Robot extends TimedRobot {
 				break;
 
 			case 3:
-				if(autoTurn(rot))
-				autoNextStep();
+				if (autoTurn(rot))
+					autoNextStep();
 				break;
 
 			case 4:
-				if(autoDrive(24) || autoTimer.get() > 2)
+				if (autoDrive(24) || autoTimer.get() > 2)
 					autoNextStep();
 				break;
 
 			case 5:
-				if(autoDump(-0.3)) {
+				if (autoDump(-0.3)) {
 					autoNextStep();
 				}
 				clamp.set(DoubleSolenoid.Value.kReverse);
@@ -601,18 +617,18 @@ public class Robot extends TimedRobot {
 				break;
 
 			case 3:
-				if(autoTurn(rot))
-				autoNextStep();
+				if (autoTurn(rot))
+					autoNextStep();
 				break;
 
 			case 4:
-				if(autoDrive(24))
-				autoNextStep();
+				if (autoDrive(24))
+					autoNextStep();
 				break;
 
 			case 5:
-				if(autoDump(0.3)) {
-				autoNextStep();
+				if (autoDump(0.3)) {
+					autoNextStep();
 				}
 				clamp.set(DoubleSolenoid.Value.kReverse);
 			}
@@ -627,84 +643,93 @@ public class Robot extends TimedRobot {
 		}
 	}
 
+	private void autoProgScaleLeft() {
+		if (gameData.startsWith("L")) {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(264))
+					autoNextStep();
+				break;
+
+			case 2:
+
+				break;
+
+			case 3:
+				if (autoTurn(45))
+					autoNextStep();
+				break;
+
+			case 4:
+				if (autoDump(0.3))
+					autoNextStep();
+				break;
+
+			}
+		} else {
+			switch (autoStep) {
+			case 1:
+				if (autoDrive(264))
+					autoNextStep();
+			}
+		}
+	}
+
 	private void autoProgScaleCenter() {
 
 	}
 
 	private void autoProgScaleRight() {
-		double rot = -90;
 		if (gameData.startsWith("R")) {
 			switch (autoStep) {
 			case 1:
-				if (autoTimer.get() > auto_delay)
+				if (autoDrive(264))
 					autoNextStep();
 				break;
 
 			case 2:
-				liftControl(0.3);
-				if (autoTimer.get() > 0.5)
-					autoNextStep();
+
 				break;
 
 			case 3:
-				if (autoDrive(240))
+				if (autoTurn(-45))
 					autoNextStep();
 				break;
 
 			case 4:
-				if (autoTurn(rot))
+				if (autoDump(0.3))
 					autoNextStep();
 				break;
-			case 5:
-				if (autoDrive(24))
-					autoNextStep();
-				break;
-			case 6:
-				autoDump(0.3);
-				break;
+
 			}
 		} else {
 			switch (autoStep) {
 			case 1:
-				if (autoTimer.get() > auto_delay)
+				if (autoDrive(264))
 					autoNextStep();
-				break;
-
-			case 2:
-				liftControl(0.3);
-				if (autoTimer.get() > 0.5)
-					autoNextStep();
-				break;
-
-			case 3:
-				if (autoDrive(200))
-					autoNextStep();
-				break;
-
-			case 4:
-				if (autoTurn(rot))
-					autoNextStep();
-				break;
-
-			case 5:
-				if (autoDrive(160))
-					autoNextStep();
-				break;
-
-			case 6:
-				if (autoTurn(0))
-					autoNextStep();
-				break;
-
-			case 7:
-				if (autoDrive(40))
-					autoNextStep();
-				break;
-
-			case 8:
-				autoDump(0.3);
-				break;
 			}
+		}
+
+	}
+
+	private void autoProgScalePrefLeft() {
+		if (gameData.charAt(1) == 'L') {
+			autoProgScaleLeft();
+		} else if (gameData.startsWith("L")) {
+			autoProgSwitchLeft();
+		} else {
+			autoProgLine();
+		}
+		
+	}
+	
+	private void autoProgScalePrefRight() {
+		if (gameData.charAt(1) == 'R') {
+			autoProgScaleRight();
+		} else if (gameData.startsWith("R")) {
+			autoProgSwitchRight();
+		} else {
+			autoProgLine();
 		}
 	}
 
