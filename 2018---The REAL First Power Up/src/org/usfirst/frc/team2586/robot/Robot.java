@@ -8,6 +8,7 @@
  * 
  */
 
+
 //
 package org.usfirst.frc.team2586.robot;
 
@@ -29,6 +30,8 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.GenericHID;
+
+
 
 public class Robot extends TimedRobot {
 
@@ -88,6 +91,11 @@ public class Robot extends TimedRobot {
 	boolean isJohnModeEnabled = false;
 	// Disable soft-limits and let the operator do as they please
 	boolean limitBreak = false;
+	
+	//variable used for initial calibration of teleop gyro
+	boolean isTrackingStraight = false;
+	boolean overrideControllers = false;
+	boolean gyroMode = true;
 
 	// variable used for initial calibration of teleop gyro
 	boolean isTrackingStraight = false;
@@ -114,15 +122,8 @@ public class Robot extends TimedRobot {
 	// autoDrive state vars
 	double dPrev = 0.0;
 	double dHeading = 0.0;
-	double loopTime = 0.02;
-	double error = 0;
-	double previousError = 0;
-	double sumError = 0;
-	double dError = 0;
-
-	double steady;
-
-	// auto delay
+	
+	//auto delay
 	double auto_delay;
 
 	/**
@@ -215,6 +216,7 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserScalePrefRight, autoChooserScalePrefRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
 
+
 		// Sendable chooser for autonomous delay [Smart Dash]
 		 delayChooser.addDefault("0", 0);
 		 delayChooser.addObject("3", 3);
@@ -226,6 +228,7 @@ public class Robot extends TimedRobot {
 		 johnModeChooser.addDefault("false", false);
 		 johnModeChooser.addObject("true", true);
 		 SmartDashboard.putData("John Mode", johnModeChooser);
+
 
 		// Auton State Vars
 		autoTimer = new Timer();
@@ -254,10 +257,34 @@ public class Robot extends TimedRobot {
 
 	@Override
 	public void teleopPeriodic() {
+
 		if (isJohnModeEnabled) {
 			johnMode();
 		} else {
 			regularDrive();
+
+		}
+		
+		if(leftStick.getRawButton(6)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(0.5, -0.5);	
+		}
+		if(leftStick.getRawButton(7)) {
+		overrideControllers = true;
+		gyroMode = false;
+		mainDrive.tankDrive(-0.5, 0.5);
+		}
+		if(!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
+			overrideControllers = false;
+		}
+		if(rightStick.getRawButton(11)) {
+			gyro.reset();
+			gyroMode = true;
+		}
+		if(rightStick.getRawButton(10)) {
+			gyro.reset();
+			gyroMode = false;
 		}
 
 		// Lift Control
@@ -282,8 +309,8 @@ public class Robot extends TimedRobot {
 		// Each trigger should allow you to either intake or eject
 		double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft)
 				- operatorController.getTriggerAxis(GenericHID.Hand.kRight);
-		intakeLeft.set(intakeCommand);
-		intakeRight.set(intakeCommand);
+		//intakeLeft.set(intakeCommand);
+		//intakeRight.set(intakeCommand);
 
 		// Claw Control
 		if (operatorController.getBButton()) {
@@ -399,7 +426,7 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-
+		
 		case 1:
 			if (autoTimer.get() > auto_delay)
 				autoNextStep();
@@ -440,7 +467,7 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-
+		
 		case 1:
 			if (autoTimer.get() > auto_delay)
 				autoNextStep();
@@ -852,6 +879,7 @@ public class Robot extends TimedRobot {
 
 		// Max rotation speed
 		rot = absMax(rot, maxSpeed);
+		rot = absMin(rot, minSpeed);
 
 		// Nothing left but to do it...
 		mainDrive.arcadeDrive(0.0, rot);
@@ -895,6 +923,17 @@ public class Robot extends TimedRobot {
 			return Math.min(input, maxValue);
 		else
 			return Math.max(input, -maxValue);
+	}
+	
+	double absMin(double input, double minValue) {
+
+		// Just in case the max is negative
+		minValue = Math.abs(minValue);
+
+		if (input > 0)
+			return Math.max(input, minValue);
+		else
+			return Math.min(input, -minValue);
 	}
 
 	double absMin(double input, double minValue) {
@@ -1041,7 +1080,7 @@ public class Robot extends TimedRobot {
 	}
 
 	public void smartDash() {
-
+		
 		// Encoders
 		SmartDashboard.putNumber("Encoder Left [RAW]", leftEnc.getRaw());
 		SmartDashboard.putNumber("Encoder Right [RAW]", rightEnc.getRaw());
@@ -1064,6 +1103,28 @@ public class Robot extends TimedRobot {
 
 		// Get Field data from FMS
 		gameData = DriverStation.getInstance().getGameSpecificMessage().toUpperCase();
+	}
+	//function to keep robot tracking straight during teleop while joysticks are in similar positions
+	public void teleopGyro(double leftStick, double rightStick) {
+		double error = 0.2;
+		double averageSpeed = (leftStick + rightStick) / 2;
+		if(leftStick >= rightStick-error && leftStick <= rightStick+error) {
+			if(!isTrackingStraight) {
+			gyro.reset();
+			isTrackingStraight = true;
+			}
+			double kP_rot = 0.5 / 45.0; // start slowing down at 45 deg.
+			double e_rot = 0 - gyro.getAngleZ();
+			double rot = e_rot * kP_rot;
+			
+			mainDrive.arcadeDrive(averageSpeed, rot);
+			
+			
+		}
+		else{
+			mainDrive.tankDrive(leftStick, rightStick);
+			isTrackingStraight = false;
+		}
 	}
 
 	// function to keep robot tracking straight during teleop while joysticks are in
