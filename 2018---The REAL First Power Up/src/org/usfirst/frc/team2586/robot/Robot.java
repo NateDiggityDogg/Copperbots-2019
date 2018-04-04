@@ -157,8 +157,11 @@ public class Robot extends TimedRobot {
 		// theoretical value double kInchesPerRevolution = 18.8496;
 		double kInchesPerRevolution = 26;
 		double kInchesPerPulse = kInchesPerRevolution / kPulsesPerRevolution;
-		leftEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
-		rightEnc.setDistancePerPulse(kInchesPerPulse); // [Inches/Pulses]
+		//left- -19733, right- 18886
+		double leftKInchesPerPulse = -.00608;
+		double rightKInchesPerPulse = .00635;
+		leftEnc.setDistancePerPulse(leftKInchesPerPulse); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(rightKInchesPerPulse); // [Inches/Pulses]
 		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted
 		// the x1 value
 		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440
@@ -406,7 +409,7 @@ public class Robot extends TimedRobot {
 			// Drive forward
 
 			// Drive for a bit
-			if (autoDrive(140))
+			if (autoDrive(120))
 				autoNextStep();
 			break;
 
@@ -748,7 +751,7 @@ public class Robot extends TimedRobot {
 
 		// Max drive speed
 		// TODO: Increase / remove after validation.
-		double maxSpeed = 0.9;
+		double maxSpeed = 0.5;
 
 		//
 		// Linear
