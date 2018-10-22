@@ -8,13 +8,13 @@
  * 
  */
 
-
 //
 package org.usfirst.frc.team2586.robot;
 
 import com.analog.adis16448.frc.ADIS16448_IMU;
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.WPI_VictorSPX;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -30,8 +30,6 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.GenericHID;
-
-
 
 public class Robot extends TimedRobot {
 
@@ -66,19 +64,16 @@ public class Robot extends TimedRobot {
 
 	// Smart Dash Choosers
 	SendableChooser<String> autoChooser = new SendableChooser<>();
-	SendableChooser<Integer>delayChooser = new SendableChooser<>();
-	SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
+	// SendableChooser<Integer>delayChooser = new SendableChooser<>();
+	// SendableChooser<Boolean>johnModeChooser = new SendableChooser<>();
 	final String autoChooserNone = "None";
 	final String autoChooserLine = "line";
 	final String autoChooserSwitchCenter = "Center Switch";
 	final String autoChooserSwitchCenterAngled = "Angled switch auton";
 	final String autoChooserSwitchLeft = "Left Switch";
 	final String autoChooserSwitchRight = "Right Switch";
-	final String autoChooserScaleLeft = "Left Scale";
 	final String autoChooserScaleCenter = "Center Scale";
 	final String autoChooserScaleRight = "Right Scale";
-	final String autoChooserScalePrefLeft = "PREF Left Scale";
-	final String autoChooserScalePrefRight = "PREF Right Scale";
 
 	/*
 	 * VARIABLE DECLARATIONS
@@ -91,11 +86,6 @@ public class Robot extends TimedRobot {
 	boolean isJohnModeEnabled = false;
 	// Disable soft-limits and let the operator do as they please
 	boolean limitBreak = false;
-	
-	//variable used for initial calibration of teleop gyro
-	boolean isTrackingStraight = false;
-	boolean overrideControllers = false;
-	boolean gyroMode = true;
 
 	// variable used for initial calibration of teleop gyro
 	boolean isTrackingStraight = false;
@@ -122,8 +112,10 @@ public class Robot extends TimedRobot {
 	// autoDrive state vars
 	double dPrev = 0.0;
 	double dHeading = 0.0;
-	
-	//auto delay
+
+	double steady;
+
+	// auto delay
 	double auto_delay;
 
 	/**
@@ -145,6 +137,7 @@ public class Robot extends TimedRobot {
 		intakeDeploy = new DoubleSolenoid(6, 7);
 
 		// Controllers
+		// ******driverController = new XboxController(0);
 		operatorController = new XboxController(0);
 		johnController = new XboxController(4);
 		leftStick = new Joystick(3);
@@ -154,15 +147,13 @@ public class Robot extends TimedRobot {
 		leftEnc = new Encoder(0, 1);
 		rightEnc = new Encoder(2, 3);
 
-		double kPulsesPerRevolution = 1440;
+		//double kPulsesPerRevolution = 1440;
 		// theoretical value double kInchesPerRevolution = 18.8496;
-		double kInchesPerRevolution = 26;
-		double kInchesPerPulse = kInchesPerRevolution / kPulsesPerRevolution;
-		//left- -19733, right- 18886
-		double leftKInchesPerPulse = -.00608;
-		double rightKInchesPerPulse = .00635;
-		leftEnc.setDistancePerPulse(leftKInchesPerPulse); // [Inches/Pulses]
-		rightEnc.setDistancePerPulse(rightKInchesPerPulse); // [Inches/Pulses]
+		//double kInchesPerRevolution = 26;
+		double kInchesPerPulseLeft = 19878 / 120;
+		double kInchesPerPulseRight = 11737 / 120;
+		leftEnc.setDistancePerPulse(kInchesPerPulseLeft); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(kInchesPerPulseRight); // [Inches/Pulses]
 		// since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted
 		// the x1 value
 		// the value for x2 is 720 pulses per revolution and the value for x4 is 1440
@@ -209,26 +200,21 @@ public class Robot extends TimedRobot {
 		autoChooser.addObject(autoChooserSwitchCenterAngled, autoChooserSwitchCenterAngled);
 		autoChooser.addObject(autoChooserSwitchLeft, autoChooserSwitchLeft);
 		autoChooser.addObject(autoChooserSwitchRight, autoChooserSwitchRight);
-		autoChooser.addObject(autoChooserScaleLeft, autoChooserScaleLeft);
 		autoChooser.addObject(autoChooserScaleCenter, autoChooserScaleCenter);
 		autoChooser.addObject(autoChooserScaleRight, autoChooserScaleRight);
-		autoChooser.addObject(autoChooserScalePrefLeft, autoChooserScalePrefLeft);
-		autoChooser.addObject(autoChooserScalePrefRight, autoChooserScalePrefRight);
 		SmartDashboard.putData("Auto Selection", autoChooser);
 
-
 		// Sendable chooser for autonomous delay [Smart Dash]
-		 delayChooser.addDefault("0", 0);
-		 delayChooser.addObject("3", 3);
-		 delayChooser.addObject("5", 5);
-		 SmartDashboard.putData("auto delay", delayChooser);
-		 auto_delay = delayChooser.getSelected();
-		
-		 //Sendable chooser for "John Mode" [Smart Dash]
-		 johnModeChooser.addDefault("false", false);
-		 johnModeChooser.addObject("true", true);
-		 SmartDashboard.putData("John Mode", johnModeChooser);
-
+		// delayChooser.addDefault("0", 0);
+		// delayChooser.addObject("3", 3);
+		// delayChooser.addObject("5", 5);
+		// SmartDashboard.putNumber("auto delay", delayChooser.getSelected());
+		//
+		// //Sendable chooser for "John Mode" [Smart Dash]
+		// auto_delay = delayChooser.getSelected();
+		// johnModeChooser.addDefault("false", false);
+		// johnModeChooser.addObject("true", true);
+		// SmartDashboard.putBoolean("John Mode", johnModeChooser.getSelected());
 
 		// Auton State Vars
 		autoTimer = new Timer();
@@ -257,34 +243,10 @@ public class Robot extends TimedRobot {
 
 	@Override
 	public void teleopPeriodic() {
-
 		if (isJohnModeEnabled) {
 			johnMode();
 		} else {
 			regularDrive();
-
-		}
-		
-		if(leftStick.getRawButton(6)) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(0.5, -0.5);	
-		}
-		if(leftStick.getRawButton(7)) {
-		overrideControllers = true;
-		gyroMode = false;
-		mainDrive.tankDrive(-0.5, 0.5);
-		}
-		if(!leftStick.getRawButton(6) && !rightStick.getRawButton(7)) {
-			overrideControllers = false;
-		}
-		if(rightStick.getRawButton(11)) {
-			gyro.reset();
-			gyroMode = true;
-		}
-		if(rightStick.getRawButton(10)) {
-			gyro.reset();
-			gyroMode = false;
 		}
 
 		// Lift Control
@@ -309,8 +271,8 @@ public class Robot extends TimedRobot {
 		// Each trigger should allow you to either intake or eject
 		double intakeCommand = operatorController.getTriggerAxis(GenericHID.Hand.kLeft)
 				- operatorController.getTriggerAxis(GenericHID.Hand.kRight);
-		//intakeLeft.set(intakeCommand);
-		//intakeRight.set(intakeCommand);
+		intakeLeft.set(intakeCommand);
+		intakeRight.set(intakeCommand);
 
 		// Claw Control
 		if (operatorController.getBButton()) {
@@ -393,24 +355,12 @@ public class Robot extends TimedRobot {
 			autoProgSwitchRight();
 			break;
 
-		case autoChooserScaleLeft:
-			autoProgScaleLeft();
-			break;
-
 		case autoChooserScaleCenter:
 			autoProgScaleCenter();
 			break;
 
 		case autoChooserScaleRight:
 			autoProgScaleRight();
-			break;
-			
-		case autoChooserScalePrefLeft:
-			autoProgScalePrefLeft();
-			break;
-
-		case autoChooserScalePrefRight:
-			autoProgScalePrefRight();
 			break;
 		}
 
@@ -426,7 +376,7 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-		
+
 		case 1:
 			if (autoTimer.get() > auto_delay)
 				autoNextStep();
@@ -442,7 +392,7 @@ public class Robot extends TimedRobot {
 
 		case 3:
 			// Stop!
-			freeze();
+			mainDrive.stopMotor();
 
 			// Hammer time... :)
 			break;
@@ -467,7 +417,7 @@ public class Robot extends TimedRobot {
 
 		// Switch case for AUTONOMOUS SWITCH
 		switch (autoStep) {
-		
+
 		case 1:
 			if (autoTimer.get() > auto_delay)
 				autoNextStep();
@@ -484,7 +434,7 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 4:
-			if (autoDrive(48.0)) {
+			if (autoDrive(24.0)) {
 				autoNextStep();
 			}
 			break;
@@ -503,7 +453,7 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 7:
-			if (autoDrive(70.0) || secondaryTimer.get() > 4.0) {
+			if (autoDrive(50.0) || secondaryTimer.get() > 4.0) {
 				autoNextStep();
 			}
 			break;
@@ -516,9 +466,8 @@ public class Robot extends TimedRobot {
 		case 9:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
-			if (autoDump(0.3)) {
-				autoNextStep();
-			}
+			autoDump(0.3);
+
 			// Stop!
 			mainDrive.stopMotor();
 
@@ -528,13 +477,13 @@ public class Robot extends TimedRobot {
 	}
 
 	private void autoProgSwitchCenterAngled() {
-		double rot = 50.6;
+		double rot = 59.89;
 		if (gameData.startsWith("L")) {
 			rot = -rot;
 		}
 		switch (autoStep) {
 		case 1:
-			if (autoDrive(24))
+			if (autoDrive(12))
 				autoNextStep();
 			break;
 
@@ -544,7 +493,7 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 3:
-			if (autoDrive(73.76))
+			if (autoDrive(115.6))
 				autoNextStep();
 			break;
 
@@ -562,7 +511,7 @@ public class Robot extends TimedRobot {
 			break;
 
 		case 6:
-			if (autoDrive(24))
+			if (autoDrive(12))
 				autoNextStep();
 			break;
 
@@ -574,9 +523,8 @@ public class Robot extends TimedRobot {
 		case 8:
 			// Drop it like it's hot...
 			clamp.set(DoubleSolenoid.Value.kReverse); // Open
-			if (autoDump(0.3)) {
-				autoNextStep();
-			}
+			autoDump(0.3);
+
 			// Stop!
 			mainDrive.stopMotor();
 
@@ -590,7 +538,7 @@ public class Robot extends TimedRobot {
 		if (gameData.startsWith("L")) {
 			switch (autoStep) {
 			case 1:
-				if (autoDrive(140))
+				if (autoDrive(120))
 					autoNextStep();
 				break;
 
@@ -603,19 +551,16 @@ public class Robot extends TimedRobot {
 				break;
 
 			case 3:
-				if (autoTurn(rot))
-					autoNextStep();
+				autoTurn(rot);
+				autoNextStep();
 				break;
 
 			case 4:
-				if (autoDrive(24) || autoTimer.get() > 2)
-					autoNextStep();
+				autoDrive(18);
 				break;
 
 			case 5:
-				if (autoDump(-0.3)) {
-					autoNextStep();
-				}
+				autoDump(-0.3);
 				clamp.set(DoubleSolenoid.Value.kReverse);
 			}
 		} else {
@@ -625,6 +570,26 @@ public class Robot extends TimedRobot {
 					autoNextStep();
 				break;
 
+			// case 2:
+			// if(autoTurn(rot));
+			// autoNextStep();
+			// break;
+			//
+			// case 3:
+			// if(autoDrive(100)) autoNextStep();
+			// break;
+			//
+			// case 4:
+			// if(autoTurn(0)) autoNextStep();
+			// break;
+			//
+			// case 5:
+			// if(autoDrive(52)) autoNextStep();
+			// break;
+			//
+			// case 6:
+			// autoDump(0.3);
+			// break;
 			}
 		}
 	}
@@ -634,7 +599,7 @@ public class Robot extends TimedRobot {
 		if (gameData.startsWith("R")) {
 			switch (autoStep) {
 			case 1:
-				if (autoDrive(140))
+				if (autoDrive(120))
 					autoNextStep();
 				break;
 
@@ -647,60 +612,45 @@ public class Robot extends TimedRobot {
 				break;
 
 			case 3:
-				if (autoTurn(rot))
-					autoNextStep();
+				autoTurn(rot);
+				autoNextStep();
 				break;
 
 			case 4:
-				if (autoDrive(24))
-					autoNextStep();
+				autoDrive(18);
 				break;
 
 			case 5:
-				if (autoDump(0.3)) {
-					autoNextStep();
-				}
+				autoDump(-0.3);
 				clamp.set(DoubleSolenoid.Value.kReverse);
 			}
 		} else {
 			switch (autoStep) {
 			case 1:
-				if (autoDrive(140))
+				if (autoDrive(120))
 					autoNextStep();
 				break;
 
-			}
-		}
-	}
-
-	private void autoProgScaleLeft() {
-		if (gameData.startsWith("L")) {
-			switch (autoStep) {
-			case 1:
-				if (autoDrive(264))
-					autoNextStep();
-				break;
-
-			case 2:
-
-				break;
-
-			case 3:
-				if (autoTurn(45))
-					autoNextStep();
-				break;
-
-			case 4:
-				if (autoDump(0.3))
-					autoNextStep();
-				break;
-
-			}
-		} else {
-			switch (autoStep) {
-			case 1:
-				if (autoDrive(264))
-					autoNextStep();
+			// case 2:
+			// if(autoTurn(rot));
+			// autoNextStep();
+			// break;
+			//
+			// case 3:
+			// if(autoDrive(100)) autoNextStep();
+			// break;
+			//
+			// case 4:
+			// if(autoTurn(0)) autoNextStep();
+			// break;
+			//
+			// case 5:
+			// if(autoDrive(52)) autoNextStep();
+			// break;
+			//
+			// case 6:
+			// autoDump(0.3);
+			// break;
 			}
 		}
 	}
@@ -710,56 +660,79 @@ public class Robot extends TimedRobot {
 	}
 
 	private void autoProgScaleRight() {
+		double rot = -90;
 		if (gameData.startsWith("R")) {
 			switch (autoStep) {
 			case 1:
-				if (autoDrive(264))
+				if (autoTimer.get() > auto_delay)
 					autoNextStep();
 				break;
 
 			case 2:
-
+				liftControl(0.3);
+				if (autoTimer.get() > 0.5)
+					autoNextStep();
 				break;
 
 			case 3:
-				if (autoTurn(-45))
+				if (autoDrive(240))
 					autoNextStep();
 				break;
 
 			case 4:
-				if (autoDump(0.3))
+				if (autoTurn(rot))
 					autoNextStep();
 				break;
-
+			case 5:
+				if (autoDrive(24))
+					autoNextStep();
+				break;
+			case 6:
+				autoDump(0.3);
+				break;
 			}
 		} else {
 			switch (autoStep) {
 			case 1:
-				if (autoDrive(264))
+				if (autoTimer.get() > auto_delay)
 					autoNextStep();
+				break;
+
+			case 2:
+				liftControl(0.3);
+				if (autoTimer.get() > 0.5)
+					autoNextStep();
+				break;
+
+			case 3:
+				if (autoDrive(200))
+					autoNextStep();
+				break;
+
+			case 4:
+				if (autoTurn(rot))
+					autoNextStep();
+				break;
+
+			case 5:
+				if (autoDrive(160))
+					autoNextStep();
+				break;
+
+			case 6:
+				if (autoTurn(0))
+					autoNextStep();
+				break;
+
+			case 7:
+				if (autoDrive(40))
+					autoNextStep();
+				break;
+
+			case 8:
+				autoDump(0.3);
+				break;
 			}
-		}
-
-	}
-
-	private void autoProgScalePrefLeft() {
-		if (gameData.charAt(1) == 'L') {
-			autoProgScaleLeft();
-		} else if (gameData.startsWith("L")) {
-			autoProgSwitchLeft();
-		} else {
-			autoProgLine();
-		}
-		
-	}
-	
-	private void autoProgScalePrefRight() {
-		if (gameData.charAt(1) == 'R') {
-			autoProgScaleRight();
-		} else if (gameData.startsWith("R")) {
-			autoProgSwitchRight();
-		} else {
-			autoProgLine();
 		}
 	}
 
@@ -778,7 +751,7 @@ public class Robot extends TimedRobot {
 
 		// Max drive speed
 		// TODO: Increase / remove after validation.
-		double maxSpeed = 0.5;
+		double maxSpeed = 0.9;
 
 		//
 		// Linear
@@ -796,26 +769,11 @@ public class Robot extends TimedRobot {
 		} else {
 			d = r;
 		}
-
-		error = distance - d;
-		// Linear-Proportional control
-		// double kP = maxSpeed / 36.0; // Start to slow down at 36 inches from target
-		double kP = .0311;
-		// Linear-Integral control
-		double kI = 0;
-		if (error < 24) {
-			sumError = sumError += error / loopTime;
-		} else {
-			sumError = 0;
-		}
-
-		// Linear-Derivative control
-		double kD = 0.004;
-		dError = (error - previousError) / loopTime;
-
-		double lin = (kP * error) + (kI * sumError) + (kD * dError);
-
-		previousError = error;
+		// Proportional control to get started
+		// TODO: add integral term later perhaps
+		double kP = maxSpeed / 36.0; // Start to slow down at 36 inches from target
+		double e_lin = distance - d;
+		double lin = e_lin * kP;
 
 		// Ramp up to speed to reduce wheel slippage
 		double max_ramp_up = 0.075;
@@ -842,7 +800,7 @@ public class Robot extends TimedRobot {
 
 		// Determine if the robot made it to the target
 		// and then wait a bit so that it can correct any overshoot.
-		if (error > 2 || e_rot > 3.0)
+		if (e_lin > 2 || e_rot > 3.0)
 			autoTimer.reset();
 		else if (autoTimer.get() > 0.75)
 			return true;
@@ -879,7 +837,6 @@ public class Robot extends TimedRobot {
 
 		// Max rotation speed
 		rot = absMax(rot, maxSpeed);
-		rot = absMin(rot, minSpeed);
 
 		// Nothing left but to do it...
 		mainDrive.arcadeDrive(0.0, rot);
@@ -896,14 +853,12 @@ public class Robot extends TimedRobot {
 		return false;
 	}
 
-	private boolean autoDump(double x) {
+	private void autoDump(double x) {
 		intakeLeft.set(x);
 		intakeRight.set(x);
-		if (autoTimer.get() > 1) {
+		if (autoTimer.get() > 0.75) {
 			freeze();
-			return true;
 		}
-		return false;
 	}
 
 	private void freeze() {
@@ -923,17 +878,6 @@ public class Robot extends TimedRobot {
 			return Math.min(input, maxValue);
 		else
 			return Math.max(input, -maxValue);
-	}
-	
-	double absMin(double input, double minValue) {
-
-		// Just in case the max is negative
-		minValue = Math.abs(minValue);
-
-		if (input > 0)
-			return Math.max(input, minValue);
-		else
-			return Math.min(input, -minValue);
 	}
 
 	double absMin(double input, double minValue) {
@@ -1080,7 +1024,7 @@ public class Robot extends TimedRobot {
 	}
 
 	public void smartDash() {
-		
+
 		// Encoders
 		SmartDashboard.putNumber("Encoder Left [RAW]", leftEnc.getRaw());
 		SmartDashboard.putNumber("Encoder Right [RAW]", rightEnc.getRaw());
@@ -1103,28 +1047,6 @@ public class Robot extends TimedRobot {
 
 		// Get Field data from FMS
 		gameData = DriverStation.getInstance().getGameSpecificMessage().toUpperCase();
-	}
-	//function to keep robot tracking straight during teleop while joysticks are in similar positions
-	public void teleopGyro(double leftStick, double rightStick) {
-		double error = 0.2;
-		double averageSpeed = (leftStick + rightStick) / 2;
-		if(leftStick >= rightStick-error && leftStick <= rightStick+error) {
-			if(!isTrackingStraight) {
-			gyro.reset();
-			isTrackingStraight = true;
-			}
-			double kP_rot = 0.5 / 45.0; // start slowing down at 45 deg.
-			double e_rot = 0 - gyro.getAngleZ();
-			double rot = e_rot * kP_rot;
-			
-			mainDrive.arcadeDrive(averageSpeed, rot);
-			
-			
-		}
-		else{
-			mainDrive.tankDrive(leftStick, rightStick);
-			isTrackingStraight = false;
-		}
 	}
 
 	// function to keep robot tracking straight during teleop while joysticks are in
