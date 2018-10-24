@@ -1,0 +1,135 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package org.usfirst.frc.team2586.robot;
+
+import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import edu.wpi.first.wpilibj.CameraServer;
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMVictorSPX;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.networktables.NetworkTable;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj.vision.VisionThread;
+import edu.wpi.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.GenericHID;
+
+public class Robot extends TimedRobot {
+
+	// HARDWARE DECLARATIONS
+
+	// Controllers
+	XboxController operatorController;
+	Joystick leftStick, rightStick;
+
+	// Speed Controllers
+	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight;
+
+	// Encoders
+	Encoder leftEnc;
+	Encoder rightEnc;
+
+	// VARIABLE DECLARATIONS
+
+	// Naming mainDrive
+	DifferentialDrive mainDrive;
+
+	// John's tank drive controls for XBOX
+
+//-------------------------------------------------------------------------------------------------------------------------------
+	// ROBOT INITIALIZATION
+
+	@Override
+	public void robotInit() {
+		// Camera
+		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
+		camera.setResolution(64, 64);
+		VisionThread vThread = new VisionThread(camera, null, null);
+
+		// Controllers
+		operatorController = new XboxController(0);
+		leftStick = new Joystick(3);
+		rightStick = new Joystick(2);
+
+		// Encoders
+		leftEnc = new Encoder(0, 1);
+		rightEnc = new Encoder(2, 3);
+
+		double kPulsesPerRevolution = 1440;
+		// theoretical value double kInchesPerRevolution = 18.8496;
+		double kInchesPerRevolution = 26;
+		double kInchesPerPulse = kInchesPerRevolution / kPulsesPerRevolution;
+		// left- -19733, right- 18886 [RAW VALUES]
+		// left- -4933, right- 4722 [ACTUAL VALUES(My god..)]
+		double leftKInchesPerPulse = -.02432597;
+		double rightKInchesPerPulse = .02541296;
+		leftEnc.setDistancePerPulse(leftKInchesPerPulse); // [Inches/Pulses]
+		rightEnc.setDistancePerPulse(rightKInchesPerPulse); // [Inches/Pulses]
+		
+		 // Drivebase
+		 frontRight = new WPI_TalonSRX(1);
+		 frontLeft = new WPI_TalonSRX(3);
+		 rearLeft = new WPI_TalonSRX(4);
+		 rearRight = new WPI_TalonSRX(2);
+
+		// declaring slave/master for back wheels
+		 rearLeft.set(ControlMode.Follower, 3);
+		 rearRight.set(ControlMode.Follower, 1);
+		 
+		 // declaring the drive system
+		 mainDrive = new DifferentialDrive(frontLeft, frontRight);
+		 mainDrive.setSafetyEnabled(false);
+	}
+
+	@Override
+	public void autonomousInit() {
+	}
+
+	@Override
+	public void autonomousPeriodic() {
+
+	}
+	//TELEOP
+	@Override
+	public void teleopPeriodic() {
+		regularDrive();
+	}
+
+	public void regularDrive() {
+		 // Get joystick inputs for drive base	 
+		 double driveLeft = deadZoneComp(leftStick.getY() * -1);
+		 double driveRight = deadZoneComp(rightStick.getY() * -1);
+		 
+		 mainDrive.tankDrive(driveLeft, driveRight);
+
+	}
+		 public double deadZoneComp(double input) {
+			 double deadZone = 0.15;
+			 if (input <= deadZone && input >= -deadZone) {
+			 return 0;
+			 } else {
+			 return input;
+			 }
+			 }
+			
+		 
+	
+
+
+	/**
+	 * This function is called periodically during test mode.
+	 */
+	@Override
+	public void testPeriodic() {
+	}
+}
