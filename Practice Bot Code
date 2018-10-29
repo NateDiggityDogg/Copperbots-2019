@@ -105,11 +105,11 @@ public class Robot extends TimedRobot {
 	// TELEOP
 	@Override
 	public void teleopPeriodic() {
-		if (operatorController.getAButton()) {
+		if (operatorController.getAButton() || rightStick.getTrigger()) {
 			drive = 1;
-		} else if (operatorController.getBButton()) {
+		} else if (operatorController.getBButton() || leftStick.getTrigger()) {
 			drive = 2;
-		} else if (operatorController.getXButton()) {
+		} else if (operatorController.getXButton() || rightStick.getRawButton(3)) {
 			drive = 0;
 		}
 
