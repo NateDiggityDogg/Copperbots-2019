@@ -58,7 +58,7 @@ public class Robot extends TimedRobot {
 		VisionThread vThread = new VisionThread(camera, null, null);
 
 		// Controllers
-		operatorController = new XboxController(0);
+		operatorController = new XboxController(5);
 		leftStick = new Joystick(3);
 		rightStick = new Joystick(2);
 
@@ -140,14 +140,14 @@ public class Robot extends TimedRobot {
 	public void xBoxDrive() {
 		// Get joystick inputs for drive base
 		double driveLeft = deadZoneComp(operatorController.getRawAxis(1) * -1);
-		double driveRight = deadZoneComp(operatorController.getRawAxis(2) * -1);
+		double driveRight = deadZoneComp(operatorController.getRawAxis(5) * -1);
 		mainDrive.tankDrive(driveLeft, driveRight);
 	}
 
 	public void arcadeDrive() {
 		// Get joystick inputs for drive base
 		double driveFandB = deadZoneComp(operatorController.getRawAxis(1) * -1);
-		double driveLandR = deadZoneComp(operatorController.getRawAxis(2) * -1);
+		double driveLandR = deadZoneComp(operatorController.getRawAxis(4));
 		mainDrive.arcadeDrive(driveFandB, driveLandR);
 	}
 
