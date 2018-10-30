@@ -1,0 +1,111 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package org.usfirst.frc.team2586.robot;
+
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+
+import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMVictorSPX;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+
+public class Robot extends TimedRobot {
+	private static final String kDefaultAuto = "Default";
+	private static final String kCustomAuto = "My Auto";
+
+	private SendableChooser<String> m_chooser = new SendableChooser<>();
+	 // Controllers
+	 XboxController operatorController, johnController;
+	 Joystick leftStick, rightStick;
+	
+	 // Speed Controllers
+	 PWMVictorSPX intakeLeft, intakeRight;
+	 WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, lift;
+	
+	 // Encoders
+	 Encoder leftEnc;
+	 Encoder rightEnc;
+	 Encoder liftEnc;
+	
+	// Naming mainDrive
+	 DifferentialDrive mainDrive;
+	 
+	 // John's tank drive controls for XBOX
+	 boolean isJohnModeEnabled = false;
+	
+	 // Switches
+	 DigitalInput liftLow, liftHigh;
+	 
+	 
+	@Override
+	public void robotInit() {
+		m_chooser.addDefault("Default Auto", kDefaultAuto);
+		m_chooser.addObject("My Auto", kCustomAuto);
+		SmartDashboard.putData("Auto choices", m_chooser);
+		 // Controllers
+		 operatorController = new XboxController(0);
+		 johnController = new XboxController(4);
+	
+		 // Encoders
+		 leftEnc = new Encoder(0, 1);
+		 rightEnc = new Encoder(2, 3); 
+		 
+		 double kPulsesPerRevolution = 1440;
+		 // theoretical value double kInchesPerRevolution = 18.8496;
+		 double kInchesPerRevolution = 26;
+		 double kInchesPerPulse = kInchesPerRevolution / kPulsesPerRevolution;
+		 // left- -19733, right- 18886 [RAW VALUES]
+		 // left- -4933, right- 4722 [ACTUAL VALUES(My god..)]
+		 double leftKInchesPerPulse = -.02432597;
+		 double rightKInchesPerPulse = .02541296;
+		 leftEnc.setDistancePerPulse(leftKInchesPerPulse); // [Inches/Pulses]
+		 rightEnc.setDistancePerPulse(rightKInchesPerPulse); // [Inches/Pulses]
+		 // since we do not know the if the decoding is by 1x, 2x, or 4x, I have inputted
+		 // the x1 value
+		 // the value for x2 is 720 pulses per revolution and the value for x4 is 1440
+		 // pulses per revolution
+		 // 18.85 inches is the value of one rotation, 1x is 0.052 inches per pulse, 2x
+		 // is 0.026 inches per pulse, and 4x is 0.013 inches per pulse
+
+		// Drivebase
+		 frontRight = new WPI_TalonSRX(1);
+		 frontLeft = new WPI_TalonSRX(3);
+		 rearLeft = new WPI_TalonSRX(4);
+		 rearRight = new WPI_TalonSRX(2);
+		 
+		// Intake;
+		 intakeLeft = new PWMVictorSPX(0);
+		 intakeRight = new PWMVictorSPX(1);
+		 intakeRight.setInverted(true);
+		 
+		 // declaring the drive system
+		 mainDrive = new DifferentialDrive(frontLeft, frontRight);
+		 mainDrive.setSafetyEnabled(false);
+		 
+	
+		 
+	}
+
+	
+
+	
+	@Override
+	public void teleopPeriodic() {
+	}
+
+	
+	@Override
+	public void testPeriodic() {
+	}
+}
