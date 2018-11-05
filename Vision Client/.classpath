@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/OpenCV"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/NetworkTables">
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/openCV"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/wpiRuntime"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/netTables">
 		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/HAL-2001/eclipse-workspace/Java Library Path"/>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/natspence/jointWorkspace/Copperbots-2019/Dependencies/Java Library Path"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/WpiUtils"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="C:/Users/HAL-2001/eclipse-workspace/Java Library Path/ntcore.jar"/>
+	<classpathentry kind="lib" path="C:/Users/natspence/jointWorkspace/Copperbots-2019/Dependencies/Java Library Path/ntcore.jar">
+		<attributes>
+			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/natspence/jointWorkspace/Copperbots-2019/Dependencies/Java Library Path"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
