@@ -11,5 +11,7 @@
 	<classpathentry kind="var" path="USERLIBS_DIR/CTRE_Phoenix.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/WPILIB"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/CTRE"/>
+	<classpathentry kind="var" path="USERLIBS_DIR/CTRE_Phoenix_WPIAPI-sources.jar"/>
+	<classpathentry kind="var" path="USERLIBS_DIR/CTRE_Phoenix_WPIAPI.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
