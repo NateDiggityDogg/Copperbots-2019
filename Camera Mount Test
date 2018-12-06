@@ -23,6 +23,10 @@ public class Robot extends TimedRobot {
 	// Camera Servos
 	Servo cameraServoUD, cameraServoLR;
 
+	// Servo Values
+	double servoPosUD;
+	double servoPosLR;
+
 	@Override
 	public void robotInit() {
 		// Camera
@@ -38,8 +42,8 @@ public class Robot extends TimedRobot {
 		cameraServoLR.set(0.5);
 
 		// Servo Positions
-		double servoPosUD = cameraServoUD.get();
-		double servoPosLR = cameraServoLR.get();
+		servoPosUD = cameraServoUD.get();
+		servoPosLR = cameraServoLR.get();
 
 	}
 
@@ -56,46 +60,49 @@ public class Robot extends TimedRobot {
 	 */
 	@Override
 	public void teleopPeriodic() {
-
-		// Turn Camera Left
-		if (operatorController.getPOV() == 270) {
-			cameraServoLR.set(0.25);
-			cameraServoUD.set(0.5);
-			// Turn Camera Right
-		} else if (operatorController.getPOV() == 90) {
-			cameraServoLR.set(0.75);
-			cameraServoUD.set(0.5);
-			// Turn Camera Up
-		} else if (operatorController.getPOV() == 0) {
-			cameraServoUD.set(0.75);
-			cameraServoLR.set(0.5);
-			// Turn Camera Down
-		} else if (operatorController.getPOV() == 180) {
-			cameraServoUD.set(0.25);
-			cameraServoLR.set(0.5);
-			// Camera to Origin
-		} else if (operatorController.getBackButton()) {
-			cameraServoUD.set(0.5);
-			cameraServoLR.set(0.5);
-			// Camera to UR
-		} else if (operatorController.getPOV() == 45) {
-			cameraServoUD.set(0.75);
-			cameraServoLR.set(0.75);
-			//Camera to DR
-		} else if (operatorController.getPOV() == 135) {
-			cameraServoUD.set(0.25);
-			cameraServoLR.set(0.75);
-			// Camera to DL
-		} else if (operatorController.getPOV() == 225) {
-			cameraServoUD.set(0.25);
-			cameraServoLR.set(0.25);
-			// Camera to UL
-		} else if (operatorController.getPOV() == 315) {
-			cameraServoUD.set(0.75);
-			cameraServoLR.set(0.25);
-		}
 		
+		servoCommandUD();
+		servoCommandLR();
+		
+		/*
+		 * // Turn Camera Left
+		 * 
+		 * if (operatorController.getPOV() == 270) { cameraServoLR.set(0.25);
+		 * cameraServoUD.set(0.5); // Turn Camera Right } else if
+		 * (operatorController.getPOV() == 90) { cameraServoLR.set(0.75);
+		 * cameraServoUD.set(0.5); // Turn Camera Up } else if
+		 * (operatorController.getPOV() == 0) { cameraServoUD.set(0.75);
+		 * cameraServoLR.set(0.5); // Turn Camera Down } else if
+		 * (operatorController.getPOV() == 180) { cameraServoUD.set(0.25);
+		 * cameraServoLR.set(0.5); // Camera to Origin } else if
+		 * (operatorController.getBackButton()) { cameraServoUD.set(0.5);
+		 * cameraServoLR.set(0.5); // Camera to UR } else if
+		 * (operatorController.getPOV() == 45) { cameraServoUD.set(0.75);
+		 * cameraServoLR.set(0.75); //Camera to DR } else if
+		 * (operatorController.getPOV() == 135) { cameraServoUD.set(0.25);
+		 * cameraServoLR.set(0.75); // Camera to DL } else if
+		 * (operatorController.getPOV() == 225) { cameraServoUD.set(0.25);
+		 * cameraServoLR.set(0.25); // Camera to UL } else if
+		 * (operatorController.getPOV() == 315) { cameraServoUD.set(0.75);
+		 * cameraServoLR.set(0.25); }
+		 * 
+		 */
+	}
 
+	public void servoCommandUD() {
+		if (operatorController.getPOV() == 0) {
+			cameraServoUD.set(servoPosUD + 0.001);
+		} else if (operatorController.getPOV() == 180) {
+			cameraServoUD.set(servoPosUD - 0.001);
+		}
+	}
+
+	public void servoCommandLR() {
+		if (operatorController.getPOV() == 270) {
+			cameraServoLR.set(servoPosLR - 0.001);			
+		} else if (operatorController.getPOV() == 90) {
+			cameraServoLR.set(servoPosLR + 0.001);
+		}
 	}
 
 	/**
