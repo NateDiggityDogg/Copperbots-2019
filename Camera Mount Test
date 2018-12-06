@@ -4,8 +4,9 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
- package org.usfirst.frc.team2586.robot;
- import edu.wpi.first.wpilibj.TimedRobot;
+package org.usfirst.frc.team2586.robot;
+
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.CameraServer;
@@ -16,80 +17,88 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
 import edu.wpi.cscore.UsbCamera;
- public class Robot extends TimedRobot {
- 	XboxController operatorController;
- 	// Camera Servos
+
+public class Robot extends TimedRobot {
+	XboxController operatorController;
+	// Camera Servos
 	Servo cameraServoUD, cameraServoLR;
- 	@Override
+
+	@Override
 	public void robotInit() {
 		// Camera
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
 		camera.setResolution(64, 64);
 		System.out.println(camera.isConnected());
- 		// Controllers
+		// Controllers
 		operatorController = new XboxController(2);
- 		// Servos
+		// Servos
 		cameraServoUD = new Servo(9);
 		cameraServoLR = new Servo(8);
 		cameraServoUD.set(0.5);
 		cameraServoLR.set(0.5);
- 	}
- 	@Override
+
+		// Servo Positions
+		double servoPosUD = cameraServoUD.get();
+		double servoPosLR = cameraServoLR.get();
+
+	}
+
+	@Override
 	public void autonomousInit() {
 	}
- 	@Override
+
+	@Override
 	public void autonomousPeriodic() {
- 	}
- 	/**
+	}
+
+	/**
 	 * This function is called periodically during operator control.
 	 */
 	@Override
 	public void teleopPeriodic() {
-		
-		System.out.println("LR Servo" + cameraServoLR.get());
-		System.out.println("UD Servo" + cameraServoUD.get());
-		
- 		// Turn Camera Left
+
+		// Turn Camera Left
 		if (operatorController.getPOV() == 270) {
-			cameraServoLR.set(1);
+			cameraServoLR.set(0.25);
+			cameraServoUD.set(0.5);
 			// Turn Camera Right
 		} else if (operatorController.getPOV() == 90) {
-			cameraServoLR.set(0);   
-		}else if(operatorController.getPOV() == 45) {
+			cameraServoLR.set(0.75);
+			cameraServoUD.set(0.5);
+			// Turn Camera Up
+		} else if (operatorController.getPOV() == 0) {
+			cameraServoUD.set(0.75);
 			cameraServoLR.set(0.5);
-		}
- 		// Turn Camera Up
-		if (operatorController.getPOV() == 0) {
-			cameraServoUD.set(1);
 			// Turn Camera Down
 		} else if (operatorController.getPOV() == 180) {
-			cameraServoUD.set(0);
-		}else if(operatorController.getPOV() == 45) {
+			cameraServoUD.set(0.25);
+			cameraServoLR.set(0.5);
+			// Camera to Origin
+		} else if (operatorController.getBackButton()) {
 			cameraServoUD.set(0.5);
+			cameraServoLR.set(0.5);
+			// Camera to UR
+		} else if (operatorController.getPOV() == 45) {
+			cameraServoUD.set(0.75);
+			cameraServoLR.set(0.75);
+			//Camera to DR
+		} else if (operatorController.getPOV() == 135) {
+			cameraServoUD.set(0.25);
+			cameraServoLR.set(0.75);
+			// Camera to DL
+		} else if (operatorController.getPOV() == 225) {
+			cameraServoUD.set(0.25);
+			cameraServoLR.set(0.25);
+			// Camera to UL
+		} else if (operatorController.getPOV() == 315) {
+			cameraServoUD.set(0.75);
+			cameraServoLR.set(0.25);
 		}
+		
 
 	}
- 	// Camera Servo Control Left-Right
-//	public boolean cameraServoStopLR() {
-//		double servoPosLR = cameraServoLR.get();
-//		if (servoPosLR >= 0.8 || servoPosLR <= 0.2) {
-//			cameraServoLR.set(0.5);
-//			return false;
-//		} else {
-//			return true;
-//		}
-//	}
- 	// Camera Servo Control Up-Down
-//	public boolean cameraServoStopUD() {
-//		double servoPosUD = cameraServoUD.get();
-//		if (servoPosUD >= 0.8 || servoPosUD <= 0.2) {
-//			cameraServoUD.set(0.5);
-//			return false;
-//		} else {
-//			return true;
-//		}
-//	}
- 	/**
+
+	/**
 	 * This function is called periodically during test mode.
 	 */
 	@Override
