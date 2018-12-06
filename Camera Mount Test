@@ -4,10 +4,8 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
-
-package org.usfirst.frc.team2586.robot;
-
-import edu.wpi.first.wpilibj.TimedRobot;
+ package org.usfirst.frc.team2586.robot;
+ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.CameraServer;
@@ -18,85 +16,80 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
 import edu.wpi.cscore.UsbCamera;
-
-public class Robot extends TimedRobot {
-
-	XboxController operatorController;
-
-	// Camera Servos
+ public class Robot extends TimedRobot {
+ 	XboxController operatorController;
+ 	// Camera Servos
 	Servo cameraServoUD, cameraServoLR;
-
-	@Override
+ 	@Override
 	public void robotInit() {
 		// Camera
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
 		camera.setResolution(64, 64);
-		VisionThread vThread = new VisionThread(camera, null, null);
-
-		// Controllers
-		operatorController = new XboxController(5);
-
-		// Servos
-		cameraServoUD = new Servo(1);
-		cameraServoLR = new Servo(2);
+		System.out.println(camera.isConnected());
+ 		// Controllers
+		operatorController = new XboxController(2);
+ 		// Servos
+		cameraServoUD = new Servo(9);
+		cameraServoLR = new Servo(8);
 		cameraServoUD.set(0.5);
 		cameraServoLR.set(0.5);
-
-	}
-
-	@Override
+ 	}
+ 	@Override
 	public void autonomousInit() {
 	}
-
-	@Override
+ 	@Override
 	public void autonomousPeriodic() {
-
-	}
-
-	/**
+ 	}
+ 	/**
 	 * This function is called periodically during operator control.
 	 */
 	@Override
 	public void teleopPeriodic() {
-
-		// Turn Camera Left
-		if (operatorController.getPOV() == 270 && cameraServoStopLR()) {
-			cameraServoLR.setSpeed(0.1);
+		
+		System.out.println("LR Servo" + cameraServoLR.get());
+		System.out.println("UD Servo" + cameraServoUD.get());
+		
+ 		// Turn Camera Left
+		if (operatorController.getPOV() == 270) {
+			cameraServoLR.set(1);
 			// Turn Camera Right
-		} else if (operatorController.getPOV() == 90 && cameraServoStopLR()) {
-			cameraServoLR.setSpeed(-0.1);
+		} else if (operatorController.getPOV() == 90) {
+			cameraServoLR.set(0);   
+		}else if(operatorController.getPOV() == 45) {
+			cameraServoLR.set(0.5);
 		}
-
-		// Turn Camera Up
-		if (operatorController.getPOV() == 0 && cameraServoStopUD()) {
-			cameraServoUD.setSpeed(0.1);
+ 		// Turn Camera Up
+		if (operatorController.getPOV() == 0) {
+			cameraServoUD.set(1);
 			// Turn Camera Down
-		} else if (operatorController.getPOV() == 180 && cameraServoStopUD()) {
-			cameraServoUD.setSpeed(-0.1);
+		} else if (operatorController.getPOV() == 180) {
+			cameraServoUD.set(0);
+		}else if(operatorController.getPOV() == 45) {
+			cameraServoUD.set(0.5);
 		}
-	}
 
-	// Camera Servo Control Left-Right
-	public boolean cameraServoStopLR() {
-		double servoPosLR = cameraServoLR.get();
-		if (servoPosLR >= 0.8 || servoPosLR <= 0.2) {
-			return false;
-		} else {
-			return true;
-		}
 	}
-
-	// Camera Servo Control Up-Down
-	public boolean cameraServoStopUD() {
-		double servoPosUD = cameraServoUD.get();
-		if (servoPosUD >= 0.8 || servoPosUD <= 0.2) {
-			return false;
-		} else {
-			return true;
-		}
-	}
-
-	/**
+ 	// Camera Servo Control Left-Right
+//	public boolean cameraServoStopLR() {
+//		double servoPosLR = cameraServoLR.get();
+//		if (servoPosLR >= 0.8 || servoPosLR <= 0.2) {
+//			cameraServoLR.set(0.5);
+//			return false;
+//		} else {
+//			return true;
+//		}
+//	}
+ 	// Camera Servo Control Up-Down
+//	public boolean cameraServoStopUD() {
+//		double servoPosUD = cameraServoUD.get();
+//		if (servoPosUD >= 0.8 || servoPosUD <= 0.2) {
+//			cameraServoUD.set(0.5);
+//			return false;
+//		} else {
+//			return true;
+//		}
+//	}
+ 	/**
 	 * This function is called periodically during test mode.
 	 */
 	@Override
