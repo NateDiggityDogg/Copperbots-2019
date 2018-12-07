@@ -1,4 +1,4 @@
-/*----------------------------------------------------------------------------*/
+/*---------------8-------------------------------------------------------------*/
 /* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
@@ -60,10 +60,11 @@ public class Robot extends TimedRobot {
 	 */
 	@Override
 	public void teleopPeriodic() {
-		
+
 		servoCommandUD();
 		servoCommandLR();
-		
+		reset();
+
 		/*
 		 * // Turn Camera Left
 		 * 
@@ -91,17 +92,38 @@ public class Robot extends TimedRobot {
 
 	public void servoCommandUD() {
 		if (operatorController.getPOV() == 0) {
-			cameraServoUD.set(servoPosUD + 0.001);
+			if (servoPosUD < 1) {
+				servoPosUD = servoPosUD + 0.01;
+			}
+			cameraServoUD.set(servoPosUD);
 		} else if (operatorController.getPOV() == 180) {
-			cameraServoUD.set(servoPosUD - 0.001);
+			if (servoPosUD > 0) {
+				servoPosUD = servoPosUD + 0.01;
+			}
+			cameraServoUD.set(servoPosUD);
 		}
 	}
 
 	public void servoCommandLR() {
 		if (operatorController.getPOV() == 270) {
-			cameraServoLR.set(servoPosLR - 0.001);			
-		} else if (operatorController.getPOV() == 90) {
-			cameraServoLR.set(servoPosLR + 0.001);
+			if (servoPosLR > 0) {
+				servoPosLR = servoPosLR - 0.01;
+				cameraServoLR.set(servoPosLR);
+			} else if (operatorController.getPOV() == 90) {
+				if (servoPosLR < 1) {
+					servoPosLR = servoPosLR + 0.01;
+				}
+				cameraServoLR.set(servoPosLR);
+			}
+		}
+	}
+
+	public void reset() {
+		if (operatorController.getBackButton()) {
+			cameraServoUD.set(0.5);
+			servoPosUD = 0.5;
+			cameraServoLR.set(0.5);
+			servoPosLR = 0.5;
 		}
 	}
 
