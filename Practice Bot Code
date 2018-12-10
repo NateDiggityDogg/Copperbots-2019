@@ -4,48 +4,178 @@
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
 /*----------------------------------------------------------------------------*/
+
 package org.usfirst.frc.team2586.robot;
 
-import edu.wpi.first.wpilibj.TimedRobot;
-import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.CameraServer;
+import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
+import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Encoder;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PWMVictorSPX;
 import edu.wpi.first.wpilibj.Servo;
+import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.interfaces.Potentiometer;
+import edu.wpi.first.wpilibj.networktables.NetworkTable;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
 import edu.wpi.cscore.UsbCamera;
+import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
+import edu.wpi.first.wpilibj.Ultrasonic;
 
 public class Robot extends TimedRobot {
+
+	// HARDWARE DECLARATIONS
+
+	// Controllers
 	XboxController operatorController;
+	Joystick leftStick, rightStick;
+	
+	// Int for intake f/b
+	int intakeFAndB;
+
+	// Speed Controllers
+	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, shooterRotater, intake;
+	PWMVictorSPX compliantTop, compliantBottom, shooterTop, shooterBottom;
+
+	// Potentiometer
+	AnalogInput pot;
+
+	// Proximity Sensor for shooter
+	Ultrasonic ultra;
+
+	// Potentiometer Reading
+	double potValue;
+	
+	// Intake Forward/Back
+	double rightT;
+	double leftT;
+
+	// Encoders
+	Encoder leftEnc;
+	Encoder rightEnc;
+
 	// Camera Servos
 	Servo cameraServoUD, cameraServoLR;
 
-	// Servo Values
+	// VARIABLE DECLARATIONS
+
+	// Naming mainDrive
+	DifferentialDrive mainDrive;
+
+	// Target Shooter Position
+	int targetPosition;
+
+	// Int Array for Shooter
+	int stops0 = 0;
+	int stops1 = 1;
+	int stops2 = 2;
+	int stops3 = 3;
+	int stops4 = 4;
+
+	// Boolean for compliant command
+	boolean canBringIn = true;
+
+	// Double for shooter
+	double shooterCommand;
+
+	// Servo readings
 	double servoPosUD;
 	double servoPosLR;
-	double camSpeed;
+
+	// Pneumatics
+	Compressor comp;
+	DoubleSolenoid intakeL;
+	DoubleSolenoid intakeR;
+
+//-------------------------------------------------------------------------------------------------------------------------------
+	// ROBOT INITIALIZATION
 
 	@Override
 	public void robotInit() {
 		// Camera
 		UsbCamera camera = CameraServer.getInstance().startAutomaticCapture();
 		camera.setResolution(64, 64);
-		System.out.println(camera.isConnected());
+		VisionThread vThread = new VisionThread(camera, null, null);
+
+		// Proximity Sensor
+		ultra = new Ultrasonic(1, 1);
+
+		// Double for shooter
+		shooterCommand = operatorController.getRawAxis(1);
+
 		// Controllers
-		operatorController = new XboxController(2);
+		operatorController = new XboxController(5);
+		leftStick = new Joystick(3);
+		rightStick = new Joystick(2);
+		
+		// Intake Front/Back
+		rightT = operatorController.getTriggerAxis(GenericHID.Hand.kRight);
+		leftT = operatorController.getTriggerAxis(GenericHID.Hand.kLeft);
+
+		// Encoders
+		leftEnc = new Encoder(0, 1);
+		rightEnc = new Encoder(2, 3);
+
 		// Servos
 		cameraServoUD = new Servo(9);
 		cameraServoLR = new Servo(8);
 		cameraServoUD.set(0.5);
 		cameraServoLR.set(0.5);
 
-		// Servo Positions
+		// Potentiometer Reading
+		potValue = pot.getValue();
+
+		// Drivebase
+		frontRight = new WPI_TalonSRX(1);
+		frontLeft = new WPI_TalonSRX(3);
+		rearLeft = new WPI_TalonSRX(4);
+		rearRight = new WPI_TalonSRX(2);
+
+		// Shooter Rotater
+		shooterRotater = new WPI_TalonSRX(5);
+
+		// Intake
+		intake = new WPI_TalonSRX(6);
+		intakeFAndB = 0;
+		
+		// Pneumatics
+		comp = new Compressor();
+		comp.start();
+		intakeL = new DoubleSolenoid(0, 1);
+		intakeR = new DoubleSolenoid(2, 3);
+		
+
+		// Shooter motors
+		shooterTop = new PWMVictorSPX(1);
+		shooterBottom = new PWMVictorSPX(2);
+		shooterTop.setInverted(true);
+
+		// Compliant motors
+		compliantTop = new PWMVictorSPX(3);
+		compliantBottom = new PWMVictorSPX(4);
+		compliantTop.setInverted(true);
+
+		// declaring slave/master for back wheels
+		rearLeft.set(ControlMode.Follower, 3);
+		rearRight.set(ControlMode.Follower, 1);
+
+		// declaring the drive system
+		mainDrive = new DifferentialDrive(frontLeft, frontRight);
+		mainDrive.setSafetyEnabled(false);
+
+		// Servo values
 		servoPosUD = cameraServoUD.get();
 		servoPosLR = cameraServoLR.get();
-		camSpeed = 0.02;
 
 	}
 
@@ -55,69 +185,256 @@ public class Robot extends TimedRobot {
 
 	@Override
 	public void autonomousPeriodic() {
+
 	}
 
-	/**
-	 * This function is called periodically during operator control.
-	 */
+	// TELEOP
 	@Override
 	public void teleopPeriodic() {
-
+		mainDrive();
 		servoCommandUD();
 		servoCommandLR();
 		reset();
+		intakeFB();
 
+		// Intake Control
+		double intakeControl = operatorController.getRawAxis(2);
+		double outTakeControl = operatorController.getRawAxis(3);
+		if (intakeControl > 0.15) {
+			intake.set(1);
+		} else if (outTakeControl > 0.15) {
+			intake.set(-1);
+		}
+
+		// Shooter Control
+
+		// For Now!
+		shooterControl();
+
+		// Later
 		/*
-		 * // Turn Camera Left
-		 * 
-		 * if (operatorController.getPOV() == 270) { cameraServoLR.set(0.25);
-		 * cameraServoUD.set(0.5); // Turn Camera Right } else if
-		 * (operatorController.getPOV() == 90) { cameraServoLR.set(0.75);
-		 * cameraServoUD.set(0.5); // Turn Camera Up } else if
-		 * (operatorController.getPOV() == 0) { cameraServoUD.set(0.75);
-		 * cameraServoLR.set(0.5); // Turn Camera Down } else if
-		 * (operatorController.getPOV() == 180) { cameraServoUD.set(0.25);
-		 * cameraServoLR.set(0.5); // Camera to Origin } else if
-		 * (operatorController.getBackButton()) { cameraServoUD.set(0.5);
-		 * cameraServoLR.set(0.5); // Camera to UR } else if
-		 * (operatorController.getPOV() == 45) { cameraServoUD.set(0.75);
-		 * cameraServoLR.set(0.75); //Camera to DR } else if
-		 * (operatorController.getPOV() == 135) { cameraServoUD.set(0.25);
-		 * cameraServoLR.set(0.75); // Camera to DL } else if
-		 * (operatorController.getPOV() == 225) { cameraServoUD.set(0.25);
-		 * cameraServoLR.set(0.25); // Camera to UL } else if
-		 * (operatorController.getPOV() == 315) { cameraServoUD.set(0.75);
-		 * cameraServoLR.set(0.25); }
-		 * 
+		 * double shooterCommandTop = deadZoneComp(operatorController.getRawAxis(1));
+		 * double shooterCommandBottom = deadZoneComp(operatorController.getRawAxis(4));
+		 * shooterTop.set(shooterCommandTop); shooterBottom.set(shooterCommandBottom);
 		 */
+
+		// Compliant Control
+
+		boolean compliantCommandIn = operatorController.getBumper(GenericHID.Hand.kLeft);
+		if (compliantCommandIn && canBringIn) {
+			compliantTop.set(1);
+			compliantBottom.set(1);
+		}
+
+		boolean compliantCommandOut = operatorController.getBumper(GenericHID.Hand.kRight);
+		if (compliantCommandOut) {
+			compliantTop.set(-1);
+			compliantBottom.set(-1);
+		}
+
 	}
 
+	public void mainDrive() {
+		// Get joystick inputs for drive base
+		double driveLeft = deadZoneComp(leftStick.getY() * -1);
+		double driveRight = deadZoneComp(rightStick.getY() * -1);
+		mainDrive.tankDrive(driveLeft, driveRight);
+		potStops();
+
+	}
+
+	public void potStops() {
+
+		switch (targetPosition) {
+		case 0:
+			getToZero();
+			break;
+		case 1:
+			getToOne();
+			break;
+		case 2:
+			getToTwo();
+			break;
+		case 3:
+			getToThree();
+			break;
+		case 4:
+			getToFour();
+			break;
+		}
+
+	}
+
+	public double deadZoneComp(double input) {
+		double deadZone = 0.15;
+		if (input <= deadZone && input >= -deadZone) {
+			return 0;
+		} else {
+			return input;
+		}
+	}
+
+	public boolean buttonsPressed() {
+		int buttons = 0;
+		int[] k = { 3, 4, 12, 2, 8 };
+		for (int i = 0; i < 5; i++) {
+			if (operatorController.getRawButton(k[i])) {
+				buttons++;
+			}
+		}
+		if (buttons > 1) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+
+	// Proximity Sensor Reading and Rumble
+	// Also Inward Compliant Boolean Set
+	public void proximityReading() throws InterruptedException {
+		ultra.setAutomaticMode(true);
+		double proximitySensor = ultra.getRangeInches();
+
+		if (proximitySensor < 2) {
+			operatorController.setRumble(RumbleType.kLeftRumble, 0.5);
+		} else if (proximitySensor < 1) {
+			canBringIn = false;
+		}
+
+	}
+
+	// Camera Servo UD
 	public void servoCommandUD() {
-		if (operatorController.getPOV() == 0) {
-			servoPosUD = servoPosUD + camSpeed;
+		if (leftStick.getRawButton(3)) {
+			if (servoPosUD < 1) {
+				servoPosUD = servoPosUD + 0.01;
+			}
 			cameraServoUD.set(servoPosUD);
-		} else if (operatorController.getPOV() == 180) {
-			servoPosUD = servoPosUD - camSpeed;
+		} else if (leftStick.getRawButton(2)) {
+			if (servoPosUD > 0) {
+				servoPosUD = servoPosUD + 0.01;
+			}
 			cameraServoUD.set(servoPosUD);
 		}
 	}
-
+	
+	// Camera Servo LR
 	public void servoCommandLR() {
-		if (operatorController.getPOV() == 270) {
-			servoPosLR = servoPosLR - camSpeed;
-			cameraServoLR.set(servoPosLR);
-		} else if (operatorController.getPOV() == 90) {
-			servoPosLR = servoPosLR + camSpeed;
-			cameraServoLR.set(servoPosLR);
+		if (leftStick.getRawButton(4)) {
+			if (servoPosLR > 0) {
+				servoPosLR = servoPosLR - 0.01;
+				cameraServoLR.set(servoPosLR);
+			} else if (leftStick.getRawButton(5)) {
+				if (servoPosLR < 1) {
+					servoPosLR = servoPosLR + 0.01;
+				}
+				cameraServoLR.set(servoPosLR);
+			}
 		}
 	}
 
+	// Reset
 	public void reset() {
-		if (operatorController.getBackButton()) {
+		if (leftStick.getTrigger()) {
 			cameraServoUD.set(0.5);
 			servoPosUD = 0.5;
 			cameraServoLR.set(0.5);
 			servoPosLR = 0.5;
+		}
+	}
+	
+	// Intake Front/Back
+	public void intakeFB() {
+		if (rightT > 0.5 || leftT < 0.5) {
+			intakeFAndB = 0;
+		} else if (leftT > 0.5 || rightT < 0.5) {
+			intakeFAndB = 1;
+		}
+		
+		switch(intakeFAndB) {
+		case 0:
+			intakeL.set(DoubleSolenoid.Value.kReverse);
+			intakeR.set(DoubleSolenoid.Value.kReverse);
+			break;
+		case 1:
+			intakeL.set(DoubleSolenoid.Value.kForward);
+			intakeR.set(DoubleSolenoid.Value.kForward);
+		}
+	}
+
+	// Method for getting to position 0
+	public void getToZero() {
+		if (operatorController.getAButton() && potValue != stops0) {
+			targetPosition = stops0;
+			if (potValue < targetPosition && buttonsPressed()) {
+				shooterRotater.set(0.5);
+			} else if (potValue > targetPosition && buttonsPressed()) { // Change once I know directions
+				shooterRotater.set(-0.5);
+			}
+		}
+	}
+
+	public void getToOne() {
+		if (operatorController.getBButton() && potValue != stops1) {
+			targetPosition = stops1;
+			if (potValue < targetPosition && buttonsPressed()) {
+				shooterRotater.set(0.5);
+			} else if (potValue > targetPosition && buttonsPressed()) { // Change once I know directions
+				shooterRotater.set(-0.5);
+			}
+		}
+	}
+
+	public void getToTwo() {
+		if (operatorController.getXButton() && potValue != stops2) {
+			targetPosition = stops2;
+			if (potValue < targetPosition && buttonsPressed()) {
+				shooterRotater.set(0.5);
+			} else if (potValue > targetPosition && buttonsPressed()) {
+				shooterRotater.set(-0.5);
+			}
+			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+				shooterRotater.set(0);
+			}
+		}
+	}
+
+	public void getToThree() {
+		if (operatorController.getYButton() && potValue != stops3) {
+			targetPosition = stops3;
+			if (potValue < targetPosition && buttonsPressed()) {
+				shooterRotater.set(0.5);
+			} else if (potValue > targetPosition && buttonsPressed()) {
+				shooterRotater.set(-0.5);
+			}
+			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+				shooterRotater.set(0);
+			}
+		}
+	}
+
+	public void getToFour() {
+		if (operatorController.getStartButton() && potValue != stops4) {
+			targetPosition = stops4;
+			if (potValue < targetPosition && buttonsPressed()) {
+				shooterRotater.set(0.5);
+			} else if (potValue > targetPosition && buttonsPressed()) {
+				shooterRotater.set(-0.5);
+			}
+			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+				shooterRotater.set(0);
+			}
+		}
+	}
+
+	public void shooterControl() {
+
+		if (shooterCommand > 0.5) {
+			shooterTop.set(1);
+			shooterBottom.set(1);
+		} else if (shooterCommand < -0.5) {
+			shooterTop.set(-0.75);
+			shooterBottom.set(-0.75);
 		}
 	}
 
