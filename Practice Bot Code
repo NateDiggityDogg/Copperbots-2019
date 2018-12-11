@@ -113,8 +113,6 @@ public class Robot extends TimedRobot {
 		// Proximity Sensor
 		// ultra = new Ultrasonic(1, 1);
 
-		// Double for shooter
-		shooterCommand = operatorController.getRawAxis(1);
 
 		// Controllers
 		operatorController = new XboxController(5);
@@ -146,6 +144,10 @@ public class Robot extends TimedRobot {
 
 		// Shooter Rotater
 		shooterRotater = new WPI_TalonSRX(5);
+		
+		// Double for shooter
+		shooterCommand = operatorController.getRawAxis(1);
+
 
 		// Intake
 		intake = new WPI_TalonSRX(6);
