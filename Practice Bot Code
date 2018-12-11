@@ -39,7 +39,7 @@ public class Robot extends TimedRobot {
 	// Controllers
 	XboxController operatorController;
 	Joystick leftStick, rightStick;
-	
+
 	// Int for intake f/b
 	int intakeFAndB;
 
@@ -51,11 +51,11 @@ public class Robot extends TimedRobot {
 	AnalogInput pot;
 
 	// Proximity Sensor for shooter
-	Ultrasonic ultra;
+	// Ultrasonic ultra;
 
 	// Potentiometer Reading
-	double potValue;
-	
+	// double potValue;
+
 	// Intake Forward/Back
 	double rightT;
 	double leftT;
@@ -63,6 +63,9 @@ public class Robot extends TimedRobot {
 	// Encoders
 	Encoder leftEnc;
 	Encoder rightEnc;
+
+	// Shooter Switches
+	DigitalInput shooterLow, shooterHigh;
 
 	// Camera Servos
 	Servo cameraServoUD, cameraServoLR;
@@ -108,7 +111,7 @@ public class Robot extends TimedRobot {
 		VisionThread vThread = new VisionThread(camera, null, null);
 
 		// Proximity Sensor
-		ultra = new Ultrasonic(1, 1);
+		// ultra = new Ultrasonic(1, 1);
 
 		// Double for shooter
 		shooterCommand = operatorController.getRawAxis(1);
@@ -117,7 +120,7 @@ public class Robot extends TimedRobot {
 		operatorController = new XboxController(5);
 		leftStick = new Joystick(3);
 		rightStick = new Joystick(2);
-		
+
 		// Intake Front/Back
 		rightT = operatorController.getTriggerAxis(GenericHID.Hand.kRight);
 		leftT = operatorController.getTriggerAxis(GenericHID.Hand.kLeft);
@@ -133,7 +136,7 @@ public class Robot extends TimedRobot {
 		cameraServoLR.set(0.5);
 
 		// Potentiometer Reading
-		potValue = pot.getValue();
+		// potValue = pot.getValue();
 
 		// Drivebase
 		frontRight = new WPI_TalonSRX(1);
@@ -147,13 +150,12 @@ public class Robot extends TimedRobot {
 		// Intake
 		intake = new WPI_TalonSRX(6);
 		intakeFAndB = 0;
-		
+
 		// Pneumatics
 		comp = new Compressor();
 		comp.start();
 		intakeL = new DoubleSolenoid(0, 1);
 		intakeR = new DoubleSolenoid(2, 3);
-		
 
 		// Shooter motors
 		shooterTop = new PWMVictorSPX(1);
@@ -177,6 +179,10 @@ public class Robot extends TimedRobot {
 		servoPosUD = cameraServoUD.get();
 		servoPosLR = cameraServoLR.get();
 
+		// Shooter switches
+		shooterLow = new DigitalInput(5);
+		shooterHigh = new DigitalInput(4);
+
 	}
 
 	@Override
@@ -196,7 +202,8 @@ public class Robot extends TimedRobot {
 		servoCommandLR();
 		reset();
 		intakeFB();
-
+		shooterControl();
+		
 		// Intake Control
 		double intakeControl = operatorController.getRawAxis(2);
 		double outTakeControl = operatorController.getRawAxis(3);
@@ -208,8 +215,6 @@ public class Robot extends TimedRobot {
 
 		// Shooter Control
 
-		// For Now!
-		shooterControl();
 
 		// Later
 		/*
@@ -239,32 +244,19 @@ public class Robot extends TimedRobot {
 		double driveLeft = deadZoneComp(leftStick.getY() * -1);
 		double driveRight = deadZoneComp(rightStick.getY() * -1);
 		mainDrive.tankDrive(driveLeft, driveRight);
-		potStops();
+		// potStops();
 
 	}
 
-	public void potStops() {
-
-		switch (targetPosition) {
-		case 0:
-			getToZero();
-			break;
-		case 1:
-			getToOne();
-			break;
-		case 2:
-			getToTwo();
-			break;
-		case 3:
-			getToThree();
-			break;
-		case 4:
-			getToFour();
-			break;
-		}
-
-	}
-
+	/*
+	 * public void potStops() {
+	 * 
+	 * switch (targetPosition) { case 0: getToZero(); break; case 1: getToOne();
+	 * break; case 2: getToTwo(); break; case 3: getToThree(); break; case 4:
+	 * getToFour(); break; }
+	 * 
+	 * }
+	 */
 	public double deadZoneComp(double input) {
 		double deadZone = 0.15;
 		if (input <= deadZone && input >= -deadZone) {
@@ -291,40 +283,40 @@ public class Robot extends TimedRobot {
 
 	// Proximity Sensor Reading and Rumble
 	// Also Inward Compliant Boolean Set
-	public void proximityReading() throws InterruptedException {
-		ultra.setAutomaticMode(true);
-		double proximitySensor = ultra.getRangeInches();
-
-		if (proximitySensor < 2) {
-			operatorController.setRumble(RumbleType.kLeftRumble, 0.5);
-		} else if (proximitySensor < 1) {
-			canBringIn = false;
-		}
-
-	}
+	/*
+	 * public void proximityReading() throws InterruptedException {
+	 * ultra.setAutomaticMode(true); double proximitySensor =
+	 * ultra.getRangeInches();
+	 * 
+	 * if (proximitySensor < 2) {
+	 * operatorController.setRumble(RumbleType.kLeftRumble, 0.5); } else if
+	 * (proximitySensor < 1) { canBringIn = false; }
+	 * 
+	 * }
+	 */
 
 	// Camera Servo UD
 	public void servoCommandUD() {
-		if (leftStick.getRawButton(3)) {
+		if (operatorController.getPOV() == 0) {
 			if (servoPosUD < 1) {
 				servoPosUD = servoPosUD + 0.01;
 			}
 			cameraServoUD.set(servoPosUD);
-		} else if (leftStick.getRawButton(2)) {
+		} else if (operatorController.getPOV() == 180) {
 			if (servoPosUD > 0) {
 				servoPosUD = servoPosUD + 0.01;
 			}
 			cameraServoUD.set(servoPosUD);
 		}
 	}
-	
+
 	// Camera Servo LR
 	public void servoCommandLR() {
-		if (leftStick.getRawButton(4)) {
+		if (operatorController.getPOV() == 270) {
 			if (servoPosLR > 0) {
 				servoPosLR = servoPosLR - 0.01;
 				cameraServoLR.set(servoPosLR);
-			} else if (leftStick.getRawButton(5)) {
+			} else if (operatorController.getPOV() == 90) {
 				if (servoPosLR < 1) {
 					servoPosLR = servoPosLR + 0.01;
 				}
@@ -335,14 +327,14 @@ public class Robot extends TimedRobot {
 
 	// Reset
 	public void reset() {
-		if (leftStick.getTrigger()) {
+		if (operatorController.getBackButton()) {
 			cameraServoUD.set(0.5);
 			servoPosUD = 0.5;
 			cameraServoLR.set(0.5);
 			servoPosLR = 0.5;
 		}
 	}
-	
+
 	// Intake Front/Back
 	public void intakeFB() {
 		if (rightT > 0.5 || leftT < 0.5) {
@@ -350,8 +342,8 @@ public class Robot extends TimedRobot {
 		} else if (leftT > 0.5 || rightT < 0.5) {
 			intakeFAndB = 1;
 		}
-		
-		switch(intakeFAndB) {
+
+		switch (intakeFAndB) {
 		case 0:
 			intakeL.set(DoubleSolenoid.Value.kReverse);
 			intakeR.set(DoubleSolenoid.Value.kReverse);
@@ -362,82 +354,60 @@ public class Robot extends TimedRobot {
 		}
 	}
 
-	// Method for getting to position 0
-	public void getToZero() {
-		if (operatorController.getAButton() && potValue != stops0) {
-			targetPosition = stops0;
-			if (potValue < targetPosition && buttonsPressed()) {
-				shooterRotater.set(0.5);
-			} else if (potValue > targetPosition && buttonsPressed()) { // Change once I know directions
-				shooterRotater.set(-0.5);
-			}
-		}
-	}
-
-	public void getToOne() {
-		if (operatorController.getBButton() && potValue != stops1) {
-			targetPosition = stops1;
-			if (potValue < targetPosition && buttonsPressed()) {
-				shooterRotater.set(0.5);
-			} else if (potValue > targetPosition && buttonsPressed()) { // Change once I know directions
-				shooterRotater.set(-0.5);
-			}
-		}
-	}
-
-	public void getToTwo() {
-		if (operatorController.getXButton() && potValue != stops2) {
-			targetPosition = stops2;
-			if (potValue < targetPosition && buttonsPressed()) {
-				shooterRotater.set(0.5);
-			} else if (potValue > targetPosition && buttonsPressed()) {
-				shooterRotater.set(-0.5);
-			}
-			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
-				shooterRotater.set(0);
-			}
-		}
-	}
-
-	public void getToThree() {
-		if (operatorController.getYButton() && potValue != stops3) {
-			targetPosition = stops3;
-			if (potValue < targetPosition && buttonsPressed()) {
-				shooterRotater.set(0.5);
-			} else if (potValue > targetPosition && buttonsPressed()) {
-				shooterRotater.set(-0.5);
-			}
-			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
-				shooterRotater.set(0);
-			}
-		}
-	}
-
-	public void getToFour() {
-		if (operatorController.getStartButton() && potValue != stops4) {
-			targetPosition = stops4;
-			if (potValue < targetPosition && buttonsPressed()) {
-				shooterRotater.set(0.5);
-			} else if (potValue > targetPosition && buttonsPressed()) {
-				shooterRotater.set(-0.5);
-			}
-			if (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
-				shooterRotater.set(0);
-			}
-		}
-	}
-
+	/*
+	 * // Method for getting to position 0 public void getToZero() { if
+	 * (operatorController.getAButton() && potValue != stops0) { targetPosition =
+	 * stops0; if (potValue < targetPosition && buttonsPressed()) {
+	 * shooterRotater.set(0.5); } else if (potValue > targetPosition &&
+	 * buttonsPressed()) { // Change once I know directions
+	 * shooterRotater.set(-0.5); } } }
+	 * 
+	 * public void getToOne() { if (operatorController.getBButton() && potValue !=
+	 * stops1) { targetPosition = stops1; if (potValue < targetPosition &&
+	 * buttonsPressed()) { shooterRotater.set(0.5); } else if (potValue >
+	 * targetPosition && buttonsPressed()) { // Change once I know directions
+	 * shooterRotater.set(-0.5); } } }
+	 * 
+	 * public void getToTwo() { if (operatorController.getXButton() && potValue !=
+	 * stops2) { targetPosition = stops2; if (potValue < targetPosition &&
+	 * buttonsPressed()) { shooterRotater.set(0.5); } else if (potValue >
+	 * targetPosition && buttonsPressed()) { shooterRotater.set(-0.5); } if
+	 * (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+	 * shooterRotater.set(0); } } }
+	 * 
+	 * public void getToThree() { if (operatorController.getYButton() && potValue !=
+	 * stops3) { targetPosition = stops3; if (potValue < targetPosition &&
+	 * buttonsPressed()) { shooterRotater.set(0.5); } else if (potValue >
+	 * targetPosition && buttonsPressed()) { shooterRotater.set(-0.5); } if
+	 * (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+	 * shooterRotater.set(0); } } }
+	 * 
+	 * public void getToFour() { if (operatorController.getStartButton() && potValue
+	 * != stops4) { targetPosition = stops4; if (potValue < targetPosition &&
+	 * buttonsPressed()) { shooterRotater.set(0.5); } else if (potValue >
+	 * targetPosition && buttonsPressed()) { shooterRotater.set(-0.5); } if
+	 * (potValue < targetPosition + 0.15 && potValue > targetPosition - 0.15) {
+	 * shooterRotater.set(0); } } }
+	 */
 	public void shooterControl() {
-
-		if (shooterCommand > 0.5) {
-			shooterTop.set(1);
-			shooterBottom.set(1);
-		} else if (shooterCommand < -0.5) {
-			shooterTop.set(-0.75);
-			shooterBottom.set(-0.75);
+		// Limit switches to prevent limits
+		// True when NOT pressed!!!!
+		if (shooterCommand > 0.5 && shooterHigh.get()) {
+			shooterRotater.set(1);
+		} else if (shooterCommand < 0.5 && shooterLow.get()) {
+			shooterRotater.set(-1);
+		} else {
+			shooterRotater.set(0.0);
 		}
 	}
 
+	/*
+	 * public void shooterControl() {
+	 * 
+	 * if (shooterCommand > 0.5) { shooterTop.set(1); shooterBottom.set(1); } else
+	 * if (shooterCommand < -0.5) { shooterTop.set(-0.75); shooterBottom.set(-0.75);
+	 * } }
+	 */
 	/**
 	 * This function is called periodically during test mode.
 	 */
