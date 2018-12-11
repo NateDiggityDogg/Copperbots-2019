@@ -9,8 +9,8 @@ package org.usfirst.frc.team2586.robot;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
-import edu.wpi.first.wpilibj.AnalogInput;
-import edu.wpi.first.wpilibj.AnalogPotentiometer;
+// import edu.wpi.first.wpilibj.AnalogInput;
+// import edu.wpi.first.wpilibj.AnalogPotentiometer;
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.DigitalInput;
@@ -23,14 +23,14 @@ import edu.wpi.first.wpilibj.Servo;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.interfaces.Potentiometer;
+// import edu.wpi.first.wpilibj.interfaces.Potentiometer;
 import edu.wpi.first.wpilibj.networktables.NetworkTable;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.vision.VisionThread;
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
-import edu.wpi.first.wpilibj.Ultrasonic;
+// import edu.wpi.first.wpilibj.Ultrasonic;
 
 public class Robot extends TimedRobot {
 
@@ -44,11 +44,11 @@ public class Robot extends TimedRobot {
 	int intakeFAndB;
 
 	// Speed Controllers
-	WPI_TalonSRX frontLeft, frontRight, rearLeft, rearRight, shooterRotater, intake;
-	PWMVictorSPX compliantTop, compliantBottom, shooterTop, shooterBottom;
+	WPI_TalonSRX frontLeft, rearLeft, shooterRotater, intake, shooterTop, shooterBottom, frontRight, rearRight;
+	PWMVictorSPX compliantTop, compliantBottom;
 
 	// Potentiometer
-	AnalogInput pot;
+	//AnalogInput pot;
 
 	// Proximity Sensor for shooter
 	// Ultrasonic ultra;
@@ -139,7 +139,7 @@ public class Robot extends TimedRobot {
 		// potValue = pot.getValue();
 
 		// Drivebase
-		frontRight = new WPI_TalonSRX(1);
+		frontRight = new WPI_TalonSRX(0);
 		frontLeft = new WPI_TalonSRX(3);
 		rearLeft = new WPI_TalonSRX(4);
 		rearRight = new WPI_TalonSRX(2);
@@ -158,8 +158,8 @@ public class Robot extends TimedRobot {
 		intakeR = new DoubleSolenoid(2, 3);
 
 		// Shooter motors
-		shooterTop = new PWMVictorSPX(1);
-		shooterBottom = new PWMVictorSPX(2);
+		shooterTop = new WPI_TalonSRX(7);
+		shooterBottom = new WPI_TalonSRX(8);
 		shooterTop.setInverted(true);
 
 		// Compliant motors
