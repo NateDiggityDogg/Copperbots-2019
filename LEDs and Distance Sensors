@@ -1,0 +1,84 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package org.usfirst.frc.team2586.robot;
+
+import edu.wpi.first.wpilibj.AnalogOutput;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.Ultrasonic;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+
+public class Robot extends TimedRobot {
+	
+	// Controller
+	XboxController controller;
+
+	// Ultrasonic
+	//Ultrasonic ultra;
+	
+	// LEDs
+	AnalogOutput wireBlue;
+	AnalogOutput wireRed;
+	AnalogOutput wireGreen;
+
+	@Override
+	public void robotInit() {
+
+		// Proximity Sensor
+		//ultra = new Ultrasonic(1, 1);
+		
+		// LED wires
+		wireBlue = new AnalogOutput(1);
+		wireRed = new AnalogOutput(2);
+		wireGreen = new AnalogOutput(3);
+		
+	}
+
+	@Override
+	public void autonomousInit() {
+
+	}
+
+	/**
+	 * This function is called periodically during autonomous.
+	 */
+	@Override
+	public void autonomousPeriodic() {
+
+	}
+
+	/**
+	 * This function is called periodically during operator control.
+	 */
+	@Override
+	public void teleopPeriodic() {
+		
+		if (controller.getAButton()) {
+			wireBlue.setVoltage(1);
+		}
+	}
+
+	// Proximity Sensor Reading and Rumble
+/*
+	public void proximityReading() throws InterruptedException {
+		ultra.setAutomaticMode(true);
+		double proximitySensor = ultra.getRangeInches();
+		if(proximitySensor < 12) {
+		wireRed.setVoltage(12);
+		} else if (proximitySensor < 24 && proximitySensor > 12) {
+		wireBlue.setVoltage(12);
+		} else {
+		wireGreen.setVoltage(12);
+		}
+		}
+*/
+	@Override
+	public void testPeriodic() {
+	}
+}
