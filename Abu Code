@@ -29,7 +29,7 @@ public class Robot extends TimedRobot {
 		xboxController = new XboxController(3);
 		
 		rightStick = new Joystick(2);
-		leftStick = new Joystick(3);
+		leftStick = new Joystick(5);
 		
 		
 		frontRight = new WPI_TalonSRX(1);
@@ -70,14 +70,14 @@ public class Robot extends TimedRobot {
 		
 		// change inputs
 		double driveLeft = deadZoneComp(xboxController.getRawAxis(1) * -1);
-		double driveRight = deadZoneComp(xboxController.getRawAxis(3) * -1);
+		double driveRight = deadZoneComp(xboxController.getRawAxis(5) * -1);
 		xboxTankDrive.tankDrive(driveLeft, driveRight);
 	} */
 	
 /*	public void xboxArcadeDrive() {
 		// change inputs: front/back, left/right
 		double driveFB = deadZoneComp(xboxController.getRawAxis(1) * -1);
-		double driveLR = deadZoneComp(xboxController.getRawAxis(3) * -1);
+		double driveLR = deadZoneComp(xboxController.getRawAxis(4) * -1);
 		xboxArcadeDrive.arcadeDrive(driveFB, driveLR);
 	} */
 	
