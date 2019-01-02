@@ -1,0 +1,115 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package org.usfirst.frc.team2586.robot;
+
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+
+public class Robot extends TimedRobot {
+
+	XboxController xboxController;
+	
+	Joystick rightStick, leftStick;
+	
+	WPI_TalonSRX frontRight, frontLeft, rearLeft, rearRight;
+	
+	DifferentialDrive joystickTankDrive, xboxTankDrive, xboxArcadeDrive, joystickCurvatureDrive, xboxCurvatureDrive;
+	
+	@Override
+	public void robotInit() {
+		
+		xboxController = new XboxController(3);
+		
+		rightStick = new Joystick(2);
+		leftStick = new Joystick(3);
+		
+		
+		frontRight = new WPI_TalonSRX(1);
+		frontLeft = new WPI_TalonSRX(3);
+		rearLeft = new WPI_TalonSRX(4);
+		rearRight = new WPI_TalonSRX(5);
+		
+		
+	}
+	@Override
+	public void autonomousInit() {
+
+	}
+
+	/**
+	 * This function is called periodically during autonomous.
+	 */
+	@Override
+	public void autonomousPeriodic() {
+
+	}
+
+	/**
+	 * This function is called periodically during operator control.
+	 */
+	@Override
+	public void teleopPeriodic() {
+		joystickTankDrive();
+	}
+	
+	public void joystickTankDrive() {
+		double driveLeft = deadZoneComp(leftStick.getY() * -1);
+		double driveRight = deadZoneComp(rightStick.getY() * -1);
+		joystickTankDrive.tankDrive(driveLeft, driveRight);
+	} 
+	
+/*	public void xboxTankDrive() {
+		
+		// change inputs
+		double driveLeft = deadZoneComp(xboxController.getRawAxis(1) * -1);
+		double driveRight = deadZoneComp(xboxController.getRawAxis(3) * -1);
+		xboxTankDrive.tankDrive(driveLeft, driveRight);
+	} */
+	
+/*	public void xboxArcadeDrive() {
+		// change inputs: front/back, left/right
+		double driveFB = deadZoneComp(xboxController.getRawAxis(1) * -1);
+		double driveLR = deadZoneComp(xboxController.getRawAxis(3) * -1);
+		xboxArcadeDrive.arcadeDrive(driveFB, driveLR);
+	} */
+	
+/*	public void joystickArcadeDrive() {
+		double driveFB = deadZoneComp(leftStick.getY() * -1);
+		double driveLR = deadZoneComp(rightStick.getX() * -1);
+		xboxArcadeDrive.arcadeDrive(driveFB, driveLR);
+	} */
+	
+/*	public void joystickCurvatureDrive() {
+		
+	}
+	
+	public void xboxCurvatureDrive() {
+		
+	} */
+	
+	public double deadZoneComp(double input) {
+		double deadZone = 0.15;
+		if (input <= deadZone && input >= -deadZone) {
+			return 0;
+		} else {
+			return input;
+		}
+	}
+	
+	
+
+	/**
+	 * This function is called periodically during test mode.
+	 */
+	@Override
+	public void testPeriodic() {
+	}
+}
