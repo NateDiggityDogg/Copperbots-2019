@@ -7,6 +7,7 @@
 
 package org.usfirst.frc.team2586.robot;
 
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -15,18 +16,18 @@ import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 
 public class Robot extends TimedRobot {
 
-	XboxController xboxController;
+//	XboxController xboxController;
 	
 	Joystick rightStick, leftStick;
 	
 	WPI_TalonSRX frontRight, frontLeft, rearLeft, rearRight;
 	
-	DifferentialDrive joystickTankDrive, xboxTankDrive, xboxArcadeDrive, joystickCurvatureDrive, xboxCurvatureDrive;
+	DifferentialDrive mainDrive;
 	
 	@Override
 	public void robotInit() {
 		
-		xboxController = new XboxController(3);
+//		xboxController = new XboxController(3);
 		
 		rightStick = new Joystick(2);
 		leftStick = new Joystick(5);
@@ -37,6 +38,11 @@ public class Robot extends TimedRobot {
 		rearLeft = new WPI_TalonSRX(4);
 		rearRight = new WPI_TalonSRX(5);
 		
+		rearLeft.set(ControlMode.Follower, 3);
+		rearRight.set(ControlMode.Follower, 1);
+
+		mainDrive = new DifferentialDrive(frontLeft, frontRight);
+		mainDrive.setSafetyEnabled(false);
 		
 	}
 	@Override
@@ -63,28 +69,27 @@ public class Robot extends TimedRobot {
 	public void joystickTankDrive() {
 		double driveLeft = deadZoneComp(leftStick.getY() * -1);
 		double driveRight = deadZoneComp(rightStick.getY() * -1);
-		joystickTankDrive.tankDrive(driveLeft, driveRight);
+		mainDrive.tankDrive(driveLeft, driveRight);
 	} 
 	
 /*	public void xboxTankDrive() {
 		
-		// change inputs
 		double driveLeft = deadZoneComp(xboxController.getRawAxis(1) * -1);
 		double driveRight = deadZoneComp(xboxController.getRawAxis(5) * -1);
-		xboxTankDrive.tankDrive(driveLeft, driveRight);
+		mainDrive.tankDrive(driveLeft, driveRight);
 	} */
 	
 /*	public void xboxArcadeDrive() {
 		// change inputs: front/back, left/right
 		double driveFB = deadZoneComp(xboxController.getRawAxis(1) * -1);
 		double driveLR = deadZoneComp(xboxController.getRawAxis(4) * -1);
-		xboxArcadeDrive.arcadeDrive(driveFB, driveLR);
+		mainDrive.arcadeDrive(driveFB, driveLR);
 	} */
 	
 /*	public void joystickArcadeDrive() {
 		double driveFB = deadZoneComp(leftStick.getY() * -1);
 		double driveLR = deadZoneComp(rightStick.getX() * -1);
-		xboxArcadeDrive.arcadeDrive(driveFB, driveLR);
+		mainDrive.arcadeDrive(driveFB, driveLR);
 	} */
 	
 /*	public void joystickCurvatureDrive() {
