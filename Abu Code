@@ -15,8 +15,8 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 
 public class Robot extends TimedRobot {
-
-//	XboxController xboxController;
+	
+	XboxController xboxController;
 	
 	Joystick rightStick, leftStick;
 	
@@ -27,7 +27,7 @@ public class Robot extends TimedRobot {
 	@Override
 	public void robotInit() {
 		
-//		xboxController = new XboxController(3);
+		xboxController = new XboxController(3);
 		
 		rightStick = new Joystick(2);
 		leftStick = new Joystick(5);
@@ -93,11 +93,15 @@ public class Robot extends TimedRobot {
 	} */
 	
 /*	public void joystickCurvatureDrive() {
-		
-	}
+		double driveFB = deadZoneComp(leftStick.getY() * -1);
+		double driveLR = deadZoneComp(rightStick.getX() * -1);
+		mainDrive.curvatureDrive(driveFB, driveLR, leftStick.getRawButton(2));
+	} */
 	
-	public void xboxCurvatureDrive() {
-		
+/*	public void xboxCurvatureDrive() {
+		double driveFB = deadZoneComp(xboxController.getRawAxis(1) * -1);
+		double driveLR = deadZoneComp(xboxController.getRawAxis(4) * -1);
+		mainDrive.curvatureDrive(driveFB, driveLR, xboxController.getYButton());
 	} */
 	
 	public double deadZoneComp(double input) {
