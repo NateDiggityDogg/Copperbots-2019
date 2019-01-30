@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonSRX;
 
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.cameraserver.CameraServer;
@@ -36,14 +37,17 @@ public class Robot extends TimedRobot {
  Joystick leftStick = new Joystick(5);
  Joystick rightStick = new Joystick(0);
 
-  TalonSRX rearLeft = new TalonSRX(1);
-  TalonSRX frontLeft = new TalonSRX(2);
+  WPI_TalonSRX rearLeft = new WPI_TalonSRX(1);
+  WPI_TalonSRX frontLeft = new WPI_TalonSRX(2);
   TalonSRX rearRight = new TalonSRX(3);
-  TalonSRX frontRight = new TalonSRX(4);
+  WPI_TalonSRX frontRight = new WPI_TalonSRX(4);
   //TalonSRX five = new TalonSRX(5);
  // TalonSRX six = new TalonSRX(6);
 
  DifferentialDrive mainDrive;
+
+ rearLeft.set(ControlMode.Follower, 2);
+		rearRight.set(ControlMode.Follower, 4);
 
 
 
@@ -85,6 +89,33 @@ mainDrive = new DifferentialDrive(frontLeft, frontRight);
 
 
 
+
+
+
+   /* 
+    if(j.getRawButton(6)){
+      one.set(ControlMode.PercentOutput, j.getY() * -1);
+    }else{
+      three.set(ControlMode.PercentOutput, 0);
+    }
+
+    if(j.getRawButton(9)){
+      four.set(ControlMode.PercentOutput, j.getY());
+    }else{
+      four.set(ControlMode.PercentOutput, 0);
+    }
+
+    if(j.getRawButton(10)){
+      five.set(ControlMode.PercentOutput, j.getY());
+    }else{
+      five.set(ControlMode.PercentOutput, 0);
+    }
+
+    if(j.getRawButton(11)){
+      six.set(ControlMode.PercentOutput, j.getY());
+    }else{
+      six.set(ControlMode.PercentOutput, 0);
+    }*/
     
 
 
