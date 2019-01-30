@@ -1,0 +1,100 @@
+/*----------------------------------------------------------------------------*/
+/* Copyright (c) 2017-2018 FIRST. All Rights Reserved.                        */
+/* Open Source Software - may be modified and shared by FRC teams. The code   */
+/* must be accompanied by the FIRST BSD license file in the root directory of */
+/* the project.                                                               */
+/*----------------------------------------------------------------------------*/
+
+package frc.robot;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.Scanner;
+import java.util.Scanner;
+import java.util.Scanner;
+import java.util.stream.Stream;
+
+import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.can.TalonSRX;
+
+import edu.wpi.cscore.UsbCamera;
+import edu.wpi.first.cameraserver.CameraServer;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.SpeedControllerGroup;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+
+public class Robot extends TimedRobot {
+
+ //Joystick right = new Joystick(0);
+ Joystick leftStick = new Joystick(5);
+ Joystick rightStick = new Joystick(0);
+
+  TalonSRX rearLeft = new TalonSRX(1);
+  TalonSRX frontLeft = new TalonSRX(2);
+  TalonSRX rearRight = new TalonSRX(3);
+  TalonSRX frontRight = new TalonSRX(4);
+  //TalonSRX five = new TalonSRX(5);
+ // TalonSRX six = new TalonSRX(6);
+
+ DifferentialDrive mainDrive;
+
+
+
+
+
+  ServerSocket serverSocket;
+  PrintWriter print;
+  Scanner scan;
+  
+
+  @Override
+  public void robotInit() {
+
+    UsbCamera c = CameraServer.getInstance().startAutomaticCapture();
+    c.setFPS(30);
+    c.setResolution(640, 480);
+
+mainDrive = new DifferentialDrive(frontLeft, frontRight);
+
+  }
+
+  @Override
+  public void robotPeriodic() {
+
+  }
+
+  @Override
+  public void autonomousInit() {
+
+  }
+  @Override
+  public void autonomousPeriodic() {
+
+  }
+  @Override
+  public void teleopPeriodic() {
+    
+
+
+
+
+    
+
+
+
+  }
+public void regularDrive() {
+
+}
+
+  @Override
+  public void testPeriodic() {
+  }
+}
